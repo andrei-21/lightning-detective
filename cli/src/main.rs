@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
-use invoice_detective::decoder::{decode, resolve_lnurl, DecodedData};
+use invoice_detective::decoder::{decode, resolve_lnurl, Bip21Param, DecodedData};
 use invoice_detective::offer_details::{IntroductionNode, OfferDetails};
 use invoice_detective::{
     InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind,
@@ -40,6 +40,9 @@ async fn main() -> Result<()> {
             println!("Investigating invoice: {invoice}");
             let findings = invoice_detective.investigate(&invoice)?;
             print_findings(findings)
+        }
+        DecodedData::Bip21(address, params) => {
+            print_bip21(address, params);
         }
     };
     Ok(())
@@ -95,6 +98,27 @@ fn print_findings(findings: InvestigativeFindings) {
     println!("    Network: {}", details.network);
     println!("     Amount: {amount}");
     println!("Desctiption: {}", details.description.italic());
+}
+
+fn print_bip21(address: String, mut params: Vec<Bip21Param>) {
+    println!("📋 {}", " BIP 21 ".reversed());
+    println!("On-chain address: {address}");
+    params.sort();
+    for param in params {
+        match param {
+            Bip21Param::Amount(amount) => println!("          Amount: {amount}"),
+            Bip21Param::Label(v) => println!("           Label: {v}"),
+            Bip21Param::Message(v) => println!("         Message: {v}"),
+            Bip21Param::Lightning(v) => println!(" BOLT 11 invoice: {v}"),
+            Bip21Param::Offer(v) => println!("   BOLT 12 offer: {v}"),
+            Bip21Param::SilentPayment(v) => println!("  Silent Payment: {v}"),
+            Bip21Param::PayjoinEndpoint(v) => println!("Payjoin Endpoint: {v}"),
+            Bip21Param::PayjoinDisallowOutputSubstitution => {
+                println!("Payjoin Disallow Output Substitution")
+            }
+            Bip21Param::Unknown(key, value) => println!("Unknown param {key}={value}"),
+        }
+    }
 }
 
 fn format_option<T: ToString>(value: &Option<T>) -> ColoredString {
