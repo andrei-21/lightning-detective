@@ -87,17 +87,17 @@ fn parse_bip21(uri: &str) -> Result<(String, Vec<Bip21Param>)> {
         .strip_prefix("bitcoin:")
         .ok_or(anyhow!("Missing bitcoin prefix"))?;
 
-    let (address, params) = match uri.split_once('?') {
-        Some(pair) => pair,
-        None => (uri, ""),
-    };
+    let (address, params) = uri.split_once('?').unwrap_or((uri, ""));
 
-    let params = try_collect(
-        params
-            .split('&')
-            .map(|p| p.split_once('=').ok_or(anyhow!("Invalid param")))
-            .map(|p| p.and_then(Bip21Param::try_from)),
-    )?;
+    let params = match params.is_empty() {
+        true => Vec::new(),
+        false => try_collect(
+            params
+                .split('&')
+                .map(|p| p.split_once('=').ok_or(anyhow!("Invalid param")))
+                .map(|p| p.and_then(Bip21Param::try_from)),
+        )?,
+    };
 
     Ok((address.to_string(), params))
 }

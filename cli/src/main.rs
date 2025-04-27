@@ -51,6 +51,7 @@ async fn main() -> Result<()> {
 fn print_offer_details(d: OfferDetails) {
     println!("📋 {}", " Details ".reversed());
     println!("         Id: {}", d.id);
+    println!("Sign pubkey: {}", format_option(&d.signing_pubkey));
     println!("     Chains: {}", d.chains.join(", "));
     println!("     Amount: {}", format_option(&d.amount));
     println!("   Quantity: {}", d.supported_quantity);
@@ -59,7 +60,6 @@ fn print_offer_details(d: OfferDetails) {
     let expires_at = d.expires_at.map(|d| d.to_rfc2822());
     println!(" Expires at: {}", format_option(&expires_at));
     println!("   Metadata: {}", format_option(&d.metadata));
-    println!("Sign pubkey: {}", format_option(&d.signing_pubkey));
     for (i, path) in d.paths.iter().enumerate() {
         println!(
             "   Paths #{i}: Intro {}",
