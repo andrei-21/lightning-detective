@@ -27,7 +27,7 @@ impl Display for ChainHash {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
         match self {
             ChainHash::Unknown(chain_hash) => write!(f, "{}", chain_hash.as_bytes().as_hex()),
-            network => write!(f, "{:?}", network),
+            network => write!(f, "{network:?}"),
         }
     }
 }
