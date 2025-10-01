@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
 use lightning_invoice::Bolt11Invoice;
@@ -52,7 +52,7 @@ pub fn decode(input: &str) -> Result<DecodedData> {
         DecodedData::Refund(refund)
     } else if input.starts_with("ln") {
         println!("Decoding as BOLT11 invoice");
-        let invoice = input.parse::<Bolt11Invoice>()?;
+        let invoice = input.parse::<Bolt11Invoice>().map_err(Error::msg)?;
         DecodedData::Invoice(invoice)
     } else if input.starts_with("bitcoin:") {
         println!("Decoding as BIP21 URI");

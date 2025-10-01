@@ -17,7 +17,8 @@ impl From<bitcoin::constants::ChainHash> for ChainHash {
             bitcoin::constants::ChainHash::BITCOIN => Self::Bitcoin,
             bitcoin::constants::ChainHash::REGTEST => Self::Regtest,
             bitcoin::constants::ChainHash::SIGNET => Self::Signet,
-            bitcoin::constants::ChainHash::TESTNET => Self::Testnet,
+            bitcoin::constants::ChainHash::TESTNET3 => Self::Testnet,
+            bitcoin::constants::ChainHash::TESTNET4 => Self::Testnet,
             chain => Self::Unknown(chain),
         }
     }

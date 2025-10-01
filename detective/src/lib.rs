@@ -9,7 +9,7 @@ use crate::graph_database::GraphDatabase;
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
@@ -50,7 +50,10 @@ impl InvoiceDetective {
     }
 
     pub fn investigate(&self, invoice: &str) -> Result<InvestigativeFindings> {
-        let invoice = invoice.trim().parse::<Bolt11Invoice>()?;
+        let invoice = invoice
+            .trim()
+            .parse::<Bolt11Invoice>()
+            .map_err(Error::msg)?;
         self.investigate_bolt11(invoice)
     }
 
@@ -90,7 +93,7 @@ impl InvoiceDetective {
     pub fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
         if offer.paths().is_empty() {
             let pubkey = offer
-                .signing_pubkey()
+                .issuer_signing_pubkey()
                 .ok_or(anyhow!("Blinded path and signing key are empty"))?
                 .to_string();
             let payee = self.graph_database.query(pubkey.clone())?;
@@ -118,7 +121,7 @@ impl InvoiceDetective {
             }
             None => Destination::Node(
                 offer
-                    .signing_pubkey()
+                    .issuer_signing_pubkey()
                     .ok_or(anyhow!("Blinded path and signing key are empty"))?,
             ),
         };

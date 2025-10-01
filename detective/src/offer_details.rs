@@ -185,7 +185,7 @@ impl From<Offer> for OfferDetails {
             .map(|d| DateTime::from_timestamp(d.as_secs() as i64, 0).unwrap());
         let metadata = offer.metadata().map(|s| s.as_hex().to_string());
 
-        let signing_pubkey = offer.signing_pubkey().map(|k| k.to_string());
+        let signing_pubkey = offer.issuer_signing_pubkey().map(|k| k.to_string());
         let paths = offer.paths().iter().map(BlindedPath::from).collect();
 
         Self {
