@@ -59,7 +59,7 @@
   <table>
     <tr>
       <td class="leftTableColumn">Network</td>
-      <td> {{ network }} </tb>
+      <td> {{ network }} </td>
       </tr>
     <tr>
       <td class="leftTableColumn">Amount</td>

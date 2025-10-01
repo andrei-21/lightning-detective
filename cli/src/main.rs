@@ -95,7 +95,7 @@ fn print_findings(findings: InvestigativeFindings) {
     println!("📋 {}", " Details ".reversed());
     println!("    Network: {}", details.network);
     println!("     Amount: {amount}");
-    println!("Desctiption: {}", details.description.italic());
+    println!("Description: {}", details.description.italic());
 }
 
 fn print_bip21(address: String, mut params: Vec<Bip21Param>) {

@@ -119,7 +119,7 @@ impl TryFrom<(&str, &str)> for Bip21Param {
             "sp" => Self::SilentPayment(decode_percent(value)?),
             "pj" => Self::PayjoinEndpoint(decode_percent(value)?),
             "pjos" if value == "0" => Self::PayjoinDisallowOutputSubstitution,
-            "pjos" => bail!("Unexpected value for pjso param"),
+            "pjos" => bail!("Unexpected value for pjos param"),
             _ => Self::Unknown(decode_percent(key)?, decode_percent(value)?),
         })
     }
@@ -134,7 +134,7 @@ fn decode_percent(input: &str) -> Result<String> {
 }
 
 pub async fn resolve_lnurl(lnurl: LnUrl) -> Result<String> {
-    println!("Quering {}", lnurl.url);
+    println!("Querying {}", lnurl.url);
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(5))
         .build()?;
@@ -155,7 +155,7 @@ pub async fn resolve_lnurl(lnurl: LnUrl) -> Result<String> {
 
     let symbol = if pay.callback.contains('?') { '&' } else { '?' };
     let url = format!("{}{symbol}amount={}", pay.callback, pay.min_sendable);
-    println!("Quering {url}");
+    println!("Querying {url}");
     let response = client.get(&url).send().await?;
     let text = response.error_for_status()?.text().await?;
     println!("Response: {text}");
@@ -165,9 +165,9 @@ pub async fn resolve_lnurl(lnurl: LnUrl) -> Result<String> {
     println!("OK");
     print!("Decoding as LNURL pay invoice response: ");
     let _ = io::stdout().flush();
-    let reponse: LnURLPayInvoice = serde_json::from_value(json)?;
+    let invoice_response: LnURLPayInvoice = serde_json::from_value(json)?;
     println!("OK");
-    Ok(reponse.pr)
+    Ok(invoice_response.pr)
 }
 
 fn try_collect<I, T, E>(iter: I) -> std::result::Result<Vec<T>, E>

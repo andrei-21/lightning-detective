@@ -27,9 +27,9 @@ it is reasonable to conclude that the recipient is utilizing the non-custodial *
 - [X] detect Network
 - [X] handle errors
 - [X] use tera functions
-- [ ] hanlde LNURL pay
-- [ ] hanlde Lightning addresses
-- [ ] display more details (expritration time)
+- [ ] handle LNURL pay
+- [ ] handle Lightning addresses
+- [ ] display more details (expiration time)
 - [ ] move css
-- [ ] server static files
+- [ ] serve static files
 - [ ] auto dark mode
