@@ -1,4 +1,4 @@
-use invoice_detective::{InvoiceDetective, RecipientNode, ServiceKind};
+use detective::{InvoiceDetective, RecipientNode, ServiceKind};
 use rocket::{get, launch, routes, Config};
 use rocket_dyn_templates::{context, Template};
 use std::net::Ipv4Addr;

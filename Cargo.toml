@@ -2,8 +2,8 @@
 
 members = [
     "cli",
+    "detective",
     "graph-builder",
-    "invoice-detective",
     "server",
 ]
 

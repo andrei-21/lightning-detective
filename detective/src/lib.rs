@@ -88,6 +88,23 @@ impl InvoiceDetective {
     }
 
     pub fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
+        if offer.paths().is_empty() {
+            let pubkey = offer
+                .signing_pubkey()
+                .ok_or(anyhow!("Blinded path and signing key are empty"))?
+                .to_string();
+            let payee = self.graph_database.query(pubkey.clone())?;
+            let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
+
+            let details = InvoiceDetails::default();
+            return Ok(InvestigativeFindings {
+                recipient,
+                payee,
+                route_hints: Vec::new(),
+                details,
+            });
+        }
+
         let introduction_node = offer
             .paths()
             .first()

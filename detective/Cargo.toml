@@ -1,10 +1,10 @@
 [package]
-name = "invoice-detective"
+name = "detective"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "invoice_detective"
+name = "detective"
 
 [dependencies]
 anyhow = "1.0.79"

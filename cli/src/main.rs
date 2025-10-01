@@ -1,10 +1,8 @@
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
-use invoice_detective::decoder::{decode, resolve_lnurl, Bip21Param, DecodedData};
-use invoice_detective::offer_details::{IntroductionNode, OfferDetails};
-use invoice_detective::{
-    InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind,
-};
+use detective::decoder::{decode, resolve_lnurl, Bip21Param, DecodedData};
+use detective::offer_details::{IntroductionNode, OfferDetails};
+use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
 use thousands::Separable;
 

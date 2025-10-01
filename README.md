@@ -1,12 +1,12 @@
-# 🕵️ Invoice Detective
+# 🕵️ Lightning Detective
 
 ## 📖 About
 
-Invoice Detective is a Rust library and a service designed to deduce the
+Lightning Detective is a Rust library and a service designed to deduce the
 recipient of a lightning payment.
 By looking at the details of the provided BOLT-11 lightning invoice and
 leveraging some knowledge of the lightning network graph.
-Invoice Detective identifies whether the payee is a user of a non-custodial wallet, custodial exchange, or something else.
+Lightning Detective identifies whether the payee is a user of a non-custodial wallet, custodial exchange, or something else.
 
 ## 🔧 How It Works
 A lightning invoice is a set of payment instructions which has the destination

@@ -8,6 +8,6 @@ default-run = "cli"
 [dependencies]
 anyhow = "1.0.79"
 colored = "2.1.0"
-invoice-detective = { version = "0.1.0", path = "../invoice-detective" }
+detective = { path = "../detective" }
 thousands = "0.2.0"
 tokio = { version = "1.36.0", features = ["rt", "macros"] }
