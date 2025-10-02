@@ -1,11 +1,13 @@
 mod chain_hash;
 pub mod decoder;
 mod graph_database;
+mod lnurl;
 mod node;
 pub mod offer_details;
 mod recipient;
 
 use crate::graph_database::GraphDatabase;
+pub use crate::lnurl::resolve_lnurl;
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};

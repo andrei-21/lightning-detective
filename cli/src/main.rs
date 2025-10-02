@@ -1,7 +1,8 @@
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
-use detective::decoder::{decode, resolve_lnurl, Bip21Param, DecodedData};
+use detective::decoder::{decode, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
+use detective::resolve_lnurl;
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
 use thousands::Separable;
