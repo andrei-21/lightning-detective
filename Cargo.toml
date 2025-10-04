@@ -5,6 +5,7 @@ members = [
     "detective",
     "graph-builder",
     "server",
+	"server2",
 ]
 
 resolver = "2"

@@ -1,0 +1,70 @@
+<article>
+  <header>The payment request is a <b>BOLT-12 offer</b></header>
+
+  <table>
+	<thead>
+      <tr><th scope="col"> <b>Offer</b> </th><th scope="col">Value</th></tr>
+	</thead>
+	<tbody>
+      <tr><th scope="row"> Id </th><td> <code class="code-value"> {{ offer.id }} </code> </td></tr>
+      <tr>
+		<th scope="row"> Signing pubkey </th>
+		<td>
+		  {% match offer.signing_pubkey %}
+		  {% when Some with (pubkey) %}
+		  <code class="code-value"> {{ pubkey }} </code>
+		  {% when None %}
+		  {{ self::mute("empty, the signing pubkey is the final blinded node id from the path") }}
+		  {% endmatch %}
+		</td>
+	  </tr>
+      <tr><th scope="row"> Chain </th><td> {{ offer.chains | join(", ") }} </td></tr>
+      <tr><th scope="row"> Amount </th><td> {{ offer.amount | or_empty }} </td></tr>
+      <tr><th scope="row"> Quantity </th><td> {{ offer.supported_quantity }} </td></tr>
+      <tr><th scope="row"> Description </th><td> {{ offer.description | or_empty }} </td></tr>
+      <tr><th scope="row"> Issuer </th><td> {{ offer.issuer | or_empty }} </td></tr>
+      <tr>
+		<th scope="row"> Expires at </th>
+		<td>
+		  {{ offer.expires_at | or_empty }}
+		  {% if offer.has_expired %}
+		  <mark>expired</mark>
+		  {% endif %}
+		</td>
+	  </tr>
+      <tr><th scope="row"> Metadata </th><td> {{ offer.metadata | or_empty }} </td></tr>
+	  {% for path in offer.paths %}
+      <tr>
+		<th scope="row"> Path #{{ loop.index0 }} </th>
+		<td>
+		  Introduction node:
+		  {% match path.introduction_node %}
+		  {% when IntroductionNode::NodeId with (pubkey) %}
+		  <code class="code-value"> {{ pubkey }} </code>
+		  {% when IntroductionNode::LeftEnd with (channel) %}
+		  <b>Left</b> end of <code> {{ channel }} </code><br>
+		  {% when IntroductionNode::RightEnd with (channel) %}
+		  <b>Right</b> end of <code> {{ channel }} </code><br>
+		  {% endmatch %}
+		  Blinding point: <code class="code-value"> {{ path.blinding_point }} </code>
+		  <hr />
+		  <ol start="0">
+			{% for hop in path.hops %}
+			<li>
+			  Node id: <code class="code-value"> {{ hop.node_id }} </code>
+			  With encrypted payload: <code class="code-value"> {{ hop.encrypted_payload }} </code>
+			</li>
+			{% endfor %}
+		  </ol>
+		</td>
+		{% endfor %}
+	  </tr>
+	  {% if offer.paths.is_empty() %}
+      <tr>
+		<th scope="row"> Paths </th>
+		<td> {{ self::mute("empty") }} </td>
+	  </tr>
+	  {% endif %}
+	</tbody>
+  </table>
+</article>

@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lightning Detective</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9" defer></script>
+	<style>
+	  .muted {
+		  color: var(--muted-color);
+		  font-style: italic;
+	  }
+	  .container {
+		  padding-block: calc(var(--spacing) * 0.5);
+	  }
+	  section,
+	  table {
+		  margin-top: calc(var(--block-spacing-vertical) * 0.3);
+		  margin-bottom: calc(var(--block-spacing-vertical) * 0.3);
+	  }
+	  article {
+		  padding-bottom: calc(var(--block-spacing-vertical) * 0.5);
+		  margin-top: calc(var(--block-spacing-vertical) * 0.5);
+		  margin-bottom: calc(var(--block-spacing-vertical) * 0.5);
+	  }
+	  article header {
+		  padding-top: calc(var(--block-spacing-vertical) * 0.5);
+		  padding-bottom: calc(var(--block-spacing-vertical) * 0.5);
+		  margin-bottom: calc(var(--block-spacing-vertical) * 0.5);
+	  }
+	  .code-value {
+		  display: block;
+		  word-break: break-all;
+		  overflow-wrap: anywhere;
+		  font-family: var(--font-stack-monospace, monospace);
+		  margin: 0.25rem 0 0;
+		  padding: 0.25rem 0;
+		  white-space: normal;
+		  color: inherit;
+	  }
+	  article.error {
+		  border: 1px solid rgba(220, 38, 38, 0.5);
+		  border-left-width: 4px;
+		  background-color: rgba(220, 38, 38, 0.08);
+		  color: inherit;
+	  }
+	  article.error header {
+		  color: rgb(185, 28, 28);
+	  }
+	</style>
+  </head>
+  <body>
+    <header class="container">
+      <nav aria-label="Primary">
+        <ul>
+          <li>
+            <a href="/" aria-current="page"><strong>Lightning Detective</strong></a>
+          </li>
+        </ul>
+        <ul>
+          <li><a href="#about">About</a></li>
+          <li><a href="#examples">Examples</a></li>
+          <li><a href="#glossary">Glossary</a></li>
+          <li><a href="https://github.com/andrei-21/lightning-detective" target="_blank" rel="noreferrer">GitHub</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <main class="container">
+	  <hgroup>
+		<h1>Lightning Detective</h1>
+		<p>Investigate a payment request (BOLT-11 invoice, BOLT-12 offer, etc.)</p>
+	  </hgroup>
+
+	  <section>
+      <form
+        hx-post="/api/parse"
+        hx-target="#result"
+        hx-swap="innerHTML"
+        novalidate>
+        <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno..."></textarea>
+        <div class="grid">
+          <button type="submit" id="htmxBtn">Investigate</button>
+          <button type="button" id="clearBtn" class="secondary" disabled>Clear</button>
+        </div>
+      </form>
+	  </section>
+
+      <section id="result" aria-live="polite"></section>
+
+      <section id="examples">
+		<hgroup>
+		  <h2>Examples</h2>
+		  <p>Sample offers; paste one into the form to see how parsing works.</p>
+		</hgroup>
+		<ul>
+		  <li>
+			<strong>Twelve cash</strong>
+			<code class="code-value">lno1pgg8getnw3q8gam9d3mx2tnrv9eks93pqw7dv89vg89dtreg63cwn4mtg7js438yk3alw3a43zshdgsm0p08q</code>
+		  </li>
+		  <li>
+			<strong>Phoenix</strong>
+			<code class="code-value">lno1zrxq8pjw7qjlm68mtp7e3yvxee4y5xrgjhhyf2fxhlphpckrvevh50u0qftkv84leahun270uwlzvzq7l9ga9460nfy4la2f5cn32mrela9ccqszdy9g6zxgp64urnn2gup75upkaucpafq6a3mw090g7mmr68rvy3xsqv6zld6enzd0v0f3ndp5s0qdtuhw5ms3mdeat9upg9q9hkj0a7e0z7ujwjt30qw547s5tgvucw6fn6r4k6zwqwvjlwnmx37zc8zzwp894lfdwhl74ja2j5v0jv6959hu45fvt6h2wqqs49kersa2ulyewljge9jzjv6dag</code>
+		  </li>
+		  <li>
+			<strong>Minimal bolt12 offer</strong>
+			<code class="code-value">lno1zcss9mk8y3wkklfvevcrszlmu23kfrxh49px20665dqwmn4p72pksese</code>
+		  </li>
+		  <li>
+			<strong>with description (but no amount)</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuckyypwa3eyt44h6txtxquqh7lz5djge4afgfjn7k4rgrkuag0jsd5xvxg</code>
+		  </li>
+		  <li>
+			<strong>for testnet</strong>
+			<code class="code-value">lno1qgsyxjtl6luzd9t3pr62xr7eemp6awnejusgf6gw45q75vcfqqqqqqq2p32x2um5ypmx2cm5dae8x93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj</code>
+		  </li>
+		  <li>
+			<strong>for bitcoin (redundant)</strong>
+			<code class="code-value">lno1qgsxlc5vp2m0rvmjcxn2y34wv0m5lyc7sdj7zksgn35dvxgqqqqqqqq2p32x2um5ypmx2cm5dae8x93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj</code>
+		  </li>
+		  <li>
+			<strong>for bitcoin or liquidv1</strong>
+			<code class="code-value">lno1qfqpge38tqmzyrdjj3x2qkdr5y80dlfw56ztq6yd9sme995g3gsxqqm0u2xq4dh3kdevrf4zg6hx8a60jv0gxe0ptgyfc6xkryqqqqqqqq9qc4r9wd6zqan9vd6x7unnzcss9mk8y3wkklfvevcrszlmu23kfrxh49px20665dqwmn4p72pksese</code>
+		  </li>
+		  <li>
+			<strong>with metadata</strong>
+			<code class="code-value">lno1qsgqqqqqqqqqqqqqqqqqqqqqqqqqqzsv23jhxapqwejkxar0wfe3vggzamrjghtt05kvkvpcp0a79gmy3nt6jsn98ad2xs8de6sl9qmgvcvs</code>
+		  </li>
+		  <li>
+			<strong>with amount</strong>
+			<code class="code-value">lno1pqpzwyq2p32x2um5ypmx2cm5dae8x93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj</code>
+		  </li>
+		  <li>
+			<strong>with currency</strong>
+			<code class="code-value">lno1qcp4256ypqpzwyq2p32x2um5ypmx2cm5dae8x93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj</code>
+		  </li>
+		  <li>
+			<strong>with expiry</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucwq3ay997czcss9mk8y3wkklfvevcrszlmu23kfrxh49px20665dqwmn4p72pksese</code>
+		  </li>
+		  <li>
+			<strong>with issuer</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucjy358garswvaz7tmzdak8gvfj9ehhyeeqgf85c4p3xgsxjmnyw4ehgunfv4e3vggzamrjghtt05kvkvpcp0a79gmy3nt6jsn98ad2xs8de6sl9qmgvcvs</code>
+		  </li>
+		  <li>
+			<strong>with quantity</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuc5qyz3vggzamrjghtt05kvkvpcp0a79gmy3nt6jsn98ad2xs8de6sl9qmgvcvs</code>
+		  </li>
+		  <li>
+			<strong>with unlimited (or unknown) quantity</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuc5qqtzzqhwcuj966ma9n9nqwqtl032xeyv6755yeflt235pmww58egx6rxry</code>
+		  </li>
+		  <li>
+			<strong>with single quantity (weird but valid)</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuc5qyq3vggzamrjghtt05kvkvpcp0a79gmy3nt6jsn98ad2xs8de6sl9qmgvcvs</code>
+		  </li>
+		  <li>
+			<strong>with feature</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucvp5yqqqqqqqqqqqqqqqqqqqqkyypwa3eyt44h6txtxquqh7lz5djge4afgfjn7k4rgrkuag0jsd5xvxg</code>
+		  </li>
+		  <li>
+			<strong>with blinded path via Bob (0x424242...), blinding 020202...</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucs5ypjgef743p5fzqq9nqxh0ah7y87rzv3ud0eleps9kl2d5348hq2k8qzqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqpqqqqqqqqqqqqqqqqqqqqqqqqqqqzqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqqzq3zyg3zyg3zyg3vggzamrjghtt05kvkvpcp0a79gmy3nt6jsn98ad2xs8de6sl9qmgvcvs</code>
+		  </li>
+		  <li>
+			<strong>same, with blinded path first_node_id using sciddir</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucs3yqqqqqqqqqqqqp2qgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqqyqqqqqqqqqqqqqqqqqqqqqqqqqqqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqqgzyg3zyg3zyg3z93pqthvwfzadd7jejes8q9lhc4rvjxd022zv5l44g6qah82ru5rdpnpj</code>
+		  </li>
+		  <li>
+			<strong>with no issuer_id and blinded path via Bob (0x424242...), blinding 020202...</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucs5ypjgef743p5fzqq9nqxh0ah7y87rzv3ud0eleps9kl2d5348hq2k8qzqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqpqqqqqqqqqqqqqqqqqqqqqqqqqqqzqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqqzq3zyg3zyg3zygs</code>
+		  </li>
+		  <li>
+			<strong>... and with second blinded path via 1x2x3 (direction 1), blinding 020202...</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyucsl5qj5qeyv5l2cs6y3qqzesrth7mlzrlp3xg7xhulusczm04x6g6nms9trspqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqqsqqqqqqqqqqqqqqqqqqqqqqqqqqpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqsqpqg3zyg3zyg3zygpqqqqzqqqqgqqxqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqqgqqqqqqqqqqqqqqqqqqqqqqqqqqqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgpqyqszqgqqsg3zyg3zyg3zygtzzqhwcuj966ma9n9nqwqtl032xeyv6755yeflt235pmww58egx6rxry</code>
+		  </li>
+		  <li>
+			<strong>unknown odd field</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuckyypwa3eyt44h6txtxquqh7lz5djge4afgfjn7k4rgrkuag0jsd5xvxfppf5x2mrvdamk7unvvs</code>
+		  </li>
+		  <li>
+			<strong>unknown odd experimental field</strong>
+			<code class="code-value">lno1pgx9getnwss8vetrw3hhyuckyypwa3eyt44h6txtxquqh7lz5djge4afgfjn7k4rgrkuag0jsd5xvx078wdv5gg2dpjkcmr0wahhymry</code>
+		  </li>
+		</ul>
+	  </section>
+    </main>
+
+    <!-- Optional placeholder targets for refined nav links -->
+    <footer class="container">
+      <div id="about" hidden></div>
+      <div id="glossary" hidden></div>
+    </footer>
+
+	<script>
+	  (function(){
+	      var form = document.querySelector('form[hx-post]');
+	      if(!form) return;
+	      var textarea = document.getElementById('text');
+	      var submitBtn = form.querySelector('button[type="submit"]');
+	      var clearBtn = document.getElementById('clearBtn');
+	      var result = document.getElementById('result');
+
+	      function updateInputState(){
+	          var hasValue = textarea && textarea.value.trim().length > 0;
+	          if(clearBtn){
+	              clearBtn.disabled = !hasValue;
+	          }
+	          if(submitBtn && !submitBtn.hasAttribute('aria-busy')){
+	              submitBtn.disabled = !hasValue;
+	          }
+	      }
+
+	      function setLoading(state){
+	          if(!submitBtn) return;
+	          if(state){
+	              submitBtn.setAttribute('aria-busy','true');
+	              submitBtn.setAttribute('data-original-text', submitBtn.textContent || '');
+	              submitBtn.textContent = 'Investigating ...';
+	              submitBtn.disabled = true;
+	          } else {
+	              submitBtn.removeAttribute('aria-busy');
+	              var orig = submitBtn.getAttribute('data-original-text');
+	              submitBtn.textContent = orig || 'Submit';
+	              submitBtn.removeAttribute('data-original-text');
+	              updateInputState();
+	          }
+	      }
+	      document.addEventListener('htmx:beforeRequest', function(){ setLoading(true); });
+	      document.addEventListener('htmx:afterRequest', function(){ setLoading(false); });
+	      document.addEventListener('htmx:requestError', function(){ setLoading(false); });
+	      document.addEventListener('htmx:afterSwap', function(event){
+	          if(!result) return;
+	          var target = event.detail && event.detail.target ? event.detail.target : null;
+	          if(target === result){
+	              result.scrollIntoView({ behavior: 'smooth' });
+	          }
+	      });
+
+	      if(textarea){
+	          textarea.addEventListener('input', updateInputState);
+	      }
+	      if(clearBtn){
+	          clearBtn.addEventListener('click', function(){
+	              if(textarea){
+					  textarea.value = '';
+					  textarea.focus();
+	              }
+	              if(result){
+	                  result.innerHTML = '';
+	              }
+	              updateInputState();
+	          });
+	      }
+	      updateInputState();
+	  })();
+	</script>
+  </body>
+</html>
