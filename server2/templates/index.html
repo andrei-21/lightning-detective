@@ -101,11 +101,11 @@
         hx-target="#result"
         hx-swap="innerHTML"
         novalidate>
-        <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno..."></textarea>
+        <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno...">{{ request }}</textarea>
         <p class="privacy-note" role="note">
 		  Requests are processed on the server without being logged.
 		  Nevertheless, please avoid including sensitive personal information;
-		  for sensitive requests, consider using the CLI version.
+		  for sensitive requests, consider using the <a href="https://github.com/andrei-21/lightning-detective" target="_blank" rel="noreferrer">CLI version</a>.
 		</p>
         <div class="grid">
           <button type="submit" id="htmxBtn">Investigate</button>
@@ -114,7 +114,7 @@
       </form>
 	  </section>
 
-      <section id="result" aria-live="polite"></section>
+      <section id="result" aria-live="polite">{{ result }}</section>
 
       <section id="examples">
 		<hgroup>
@@ -233,6 +233,70 @@
 	          }
 	      }
 
+	      function updateAddressBar(requestValue){
+	          if(!window.history || !window.URL) return;
+	          try {
+	              var current = new URL(window.location.href);
+	              if(requestValue && requestValue.length){
+	                  current.searchParams.set('r', requestValue);
+	              } else {
+	                  current.searchParams.delete('r');
+	              }
+	              history.replaceState(null, '', current.toString());
+	          } catch (err) {
+	              console.error('Unable to update address bar', err);
+	          }
+	      }
+
+	      async function copyToClipboard(text){
+	          if(!text) return false;
+	          if(navigator.clipboard && navigator.clipboard.writeText){
+	              try {
+	                  await navigator.clipboard.writeText(text);
+	                  return true;
+	              } catch (err) {
+	                  console.error('Clipboard copy failed', err);
+	              }
+	          }
+	          var helper = document.createElement('textarea');
+	          helper.value = text;
+	          helper.setAttribute('readonly', '');
+	          helper.style.position = 'absolute';
+	          helper.style.left = '-9999px';
+	          document.body.appendChild(helper);
+	          helper.select();
+	          try {
+	              var result = document.execCommand && document.execCommand('copy');
+	              if(!result){
+	                  console.error('Clipboard fallback did not report success');
+	              }
+	              return !!result;
+	          } catch (err) {
+	              console.error('Clipboard fallback failed', err);
+	              return false;
+	          } finally {
+	              document.body.removeChild(helper);
+	          }
+	      }
+
+	      function wireShareButton(){
+	          if(!result) return;
+	          var btn = result.querySelector('button.share');
+	          if(!btn || btn.dataset.clipboardWired === 'true') return;
+	          btn.dataset.clipboardWired = 'true';
+	          btn.addEventListener('click', function(){
+	              var originalLabel = btn.textContent;
+	              copyToClipboard(window.location.href).then(function(success){
+	                  if(success){
+	                      btn.textContent = 'Copied!';
+	                      setTimeout(function(){
+	                          btn.textContent = originalLabel;
+	                      }, 2000);
+	                  }
+	              });
+	          });
+	      }
+
 	      function setLoading(state){
 	          if(!submitBtn) return;
 	          if(state){
@@ -248,7 +312,12 @@
 	              updateInputState();
 	          }
 	      }
-	      document.addEventListener('htmx:beforeRequest', function(){ setLoading(true); });
+	      document.addEventListener('htmx:beforeRequest', function(){
+	          setLoading(true);
+	          if(textarea){
+	              updateAddressBar(textarea.value.trim());
+	          }
+	      });
 	      document.addEventListener('htmx:afterRequest', function(){ setLoading(false); });
 	      document.addEventListener('htmx:requestError', function(){ setLoading(false); });
 	      document.addEventListener('htmx:afterSwap', function(event){
@@ -256,6 +325,7 @@
 	          var target = event.detail && event.detail.target ? event.detail.target : null;
 	          if(target === result){
 	              result.scrollIntoView({ behavior: 'smooth' });
+	              wireShareButton();
 	          }
 	      });
 
@@ -272,8 +342,10 @@
 	                  result.innerHTML = '';
 	              }
 	              updateInputState();
+	              updateAddressBar('');
 	          });
 	      }
+	      wireShareButton();
 	      updateInputState();
 	  })();
 	</script>

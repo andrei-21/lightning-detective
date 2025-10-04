@@ -1,6 +1,6 @@
 use askama::filters::Safe;
 use askama::Template;
-use axum::extract::Form;
+use axum::extract::{Form, Query};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
@@ -30,8 +30,20 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn index() -> Html<&'static str> {
-    Html(include_str!("index.html"))
+#[derive(Deserialize, Default)]
+struct IndexQuery {
+    r: Option<String>,
+}
+
+async fn index(Query(params): Query<IndexQuery>) -> Html<String> {
+    let content = match params.r {
+        Some(request) => {
+			let result = Safe("<b>lol</b>".to_string());
+			IndexTemplate { request, result }.render().unwrap()
+		}
+        None => IndexTemplate{ request: String::new(), result: Safe(String::new()) }.render().unwrap(),
+    };
+    Html(content)
 }
 
 #[derive(Deserialize)]
@@ -52,6 +64,13 @@ async fn parse(Form(input): Form<Input>) -> Html<String> {
 
     let offer_template = OfferTemplate { offer };
     Html(offer_template.render().unwrap())
+}
+
+#[derive(Template)]
+#[template(path = "index.html")]
+struct IndexTemplate {
+    request: String,
+	result: Safe<String>,
 }
 
 #[derive(Template)]
