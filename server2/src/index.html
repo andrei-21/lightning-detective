@@ -7,12 +7,36 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <script src="https://unpkg.com/htmx.org@1.9" defer></script>
 	<style>
+	  .parent {
+		  display: grid;
+		  grid-template-columns: repeat(5, 1fr);
+		  grid-template-rows: 1fr;
+		  grid-column-gap: 0px;
+		  grid-row-gap: 0px;
+		  align-items: center;
+	  }
+	  .div1 { grid-area: 1 / 1 / 2 / 5; }
+	  .div2 { grid-area: 1 / 5 / 2 / 6; }
+	  button.share {
+		  margin-bottom: 0;
+	  }
 	  .muted {
 		  color: var(--muted-color);
 		  font-style: italic;
 	  }
+	  .privacy-note {
+		  margin-top: calc(var(--block-spacing-vertical) * 0.3);
+		  margin-bottom: calc(var(--block-spacing-vertical) * 0.3);
+		  padding: calc(var(--spacing) * 0.75);
+		  border-left: 4px solid rgba(234, 179, 8, 0.7);
+		  background-color: rgba(250, 204, 21, 0.18);
+		  border-radius: var(--border-radius);
+	  }
 	  .container {
 		  padding-block: calc(var(--spacing) * 0.5);
+	  }
+	  textarea {
+		  margin-bottom: 0;
 	  }
 	  section,
 	  table {
@@ -59,9 +83,7 @@
           </li>
         </ul>
         <ul>
-          <li><a href="#about">About</a></li>
           <li><a href="#examples">Examples</a></li>
-          <li><a href="#glossary">Glossary</a></li>
           <li><a href="https://github.com/andrei-21/lightning-detective" target="_blank" rel="noreferrer">GitHub</a></li>
         </ul>
       </nav>
@@ -80,6 +102,11 @@
         hx-swap="innerHTML"
         novalidate>
         <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno..."></textarea>
+        <p class="privacy-note" role="note">
+		  Requests are processed on the server without being logged.
+		  Nevertheless, please avoid including sensitive personal information;
+		  for sensitive requests, consider using the CLI version.
+		</p>
         <div class="grid">
           <button type="submit" id="htmxBtn">Investigate</button>
           <button type="button" id="clearBtn" class="secondary" disabled>Clear</button>
@@ -186,12 +213,6 @@
 		</ul>
 	  </section>
     </main>
-
-    <!-- Optional placeholder targets for refined nav links -->
-    <footer class="container">
-      <div id="about" hidden></div>
-      <div id="glossary" hidden></div>
-    </footer>
 
 	<script>
 	  (function(){
