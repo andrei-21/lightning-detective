@@ -75,7 +75,7 @@ pub struct OfferDetails {
     pub description: Option<String>,
     pub issuer: Option<String>,
     pub expires_at: Option<DateTime<Utc>>,
-	pub has_expired: bool,
+    pub has_expired: bool,
     pub metadata: Option<String>,
     pub signing_pubkey: Option<String>,
     pub paths: Vec<BlindedPath>,
@@ -184,7 +184,7 @@ impl From<Offer> for OfferDetails {
         let expires_at = offer
             .absolute_expiry()
             .map(|d| DateTime::from_timestamp(d.as_secs() as i64, 0).unwrap());
-		let has_expired = offer.is_expired();
+        let has_expired = offer.is_expired();
         let metadata = offer.metadata().map(|s| s.as_hex().to_string());
 
         let signing_pubkey = offer.issuer_signing_pubkey().map(|k| k.to_string());
@@ -198,7 +198,7 @@ impl From<Offer> for OfferDetails {
             description,
             issuer,
             expires_at,
-			has_expired,
+            has_expired,
             metadata,
             signing_pubkey,
             paths,

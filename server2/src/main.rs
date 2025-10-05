@@ -5,11 +5,15 @@ use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
 use detective::decoder::DecodedData;
-use detective::offer_details::{IntroductionNode, OfferDetails};
+use detective::offer_details::OfferDetails;
 use serde::Deserialize;
 use std::net::SocketAddr;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
+
+mod templates;
+
+use crate::templates::{ErrorTemplate, IndexTemplate, OfferTemplate};
 
 #[tokio::main]
 async fn main() {
@@ -36,14 +40,17 @@ struct IndexQuery {
 }
 
 async fn index(Query(params): Query<IndexQuery>) -> Html<String> {
-    let content = match params.r {
+    let template = match params.r {
         Some(request) => {
-			let result = Safe("<b>lol</b>".to_string());
-			IndexTemplate { request, result }.render().unwrap()
-		}
-        None => IndexTemplate{ request: String::new(), result: Safe(String::new()) }.render().unwrap(),
+            let result = Safe(parse0(&request));
+            IndexTemplate { request, result }
+        }
+        None => IndexTemplate {
+            request: String::new(),
+            result: Safe(String::new()),
+        },
     };
-    Html(content)
+    Html(template.render().unwrap())
 }
 
 #[derive(Deserialize)]
@@ -52,56 +59,20 @@ struct Input {
 }
 
 async fn parse(Form(input): Form<Input>) -> Html<String> {
-    let result = match detective::decoder::decode(&input.text) {
+    Html(parse0(&input.text))
+}
+
+fn parse0(input: &str) -> String {
+    let result = match detective::decoder::decode(input) {
         Ok(result) => result,
-        Err(err) => return Html(ErrorTemplate { err }.render().unwrap()),
+        Err(err) => return ErrorTemplate { err }.render().unwrap(),
     };
     let offer = match result {
         DecodedData::Offer(offer) => offer,
         _ => panic!(),
     };
-    let offer = detective::offer_details::OfferDetails::from(offer);
+    let offer = OfferDetails::from(offer);
 
     let offer_template = OfferTemplate { offer };
-    Html(offer_template.render().unwrap())
-}
-
-#[derive(Template)]
-#[template(path = "index.html")]
-struct IndexTemplate {
-    request: String,
-	result: Safe<String>,
-}
-
-#[derive(Template)]
-#[template(path = "error.html")]
-struct ErrorTemplate {
-    err: anyhow::Error,
-}
-
-#[derive(Template)]
-#[template(path = "offer.html")]
-struct OfferTemplate {
-    offer: OfferDetails,
-}
-
-fn mute(message: &str) -> Safe<String> {
-    Safe(format!("<span class=\"muted\">{}</span>", message))
-}
-
-mod filters {
-    use super::mute;
-    use askama::filters::MaybeSafe;
-    use askama::{Result, Values};
-
-    pub fn or_empty<T: std::fmt::Display>(
-        s: &Option<T>,
-        _: &dyn Values,
-    ) -> Result<MaybeSafe<String>> {
-        let s = match s {
-            Some(s) => MaybeSafe::NeedsEscaping(s.to_string()),
-            None => MaybeSafe::Safe(mute("empty").0),
-        };
-        Ok(s)
-    }
+    offer_template.render().unwrap()
 }
