@@ -91,7 +91,7 @@ fn print_findings(findings: InvestigativeFindings) {
     }
 
     let details = findings.details;
-    let amount = format_msat(details.amount_msat);
+    let amount = format_msat(details.amount);
     println!();
     println!("📋 {}", " Details ".reversed());
     println!("    Network: {}", details.network);

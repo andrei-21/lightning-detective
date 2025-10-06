@@ -7,6 +7,19 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
     <script src="https://unpkg.com/htmx.org@1.9" defer></script>
 	<style>
+	  .grid-like {
+		  display: grid;
+		  grid-template-columns: auto auto;
+		  justify-content: start;
+		  gap: .25rem .5rem;
+		  font-size: 0.8em;
+	  }
+	  @media (max-width: 30rem){
+		  .grid-like{ grid-template-columns: auto; }
+	  }
+	  .badge-required     { background:#a8b5c8; color:#1a2a3a; }
+	  .badge-supported    { background:#b8c9b9; color:#1b5e20; }
+	  .badge-not-supported{ background:#d1b8b8; color:#6d1a1a; }
 	  .parent {
 		  display: grid;
 		  grid-template-columns: repeat(5, 1fr);

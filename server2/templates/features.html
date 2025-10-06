@@ -1,0 +1,5 @@
+<div class="grid-like">
+  {% for feature in features %}
+  <span> {{ feature.0 }} </span><span> {{ self::format_feature_flag(feature.1) }} </span>
+  {% endfor %}
+</div>

@@ -1,30 +1,53 @@
 mod chain_hash;
 pub mod decoder;
 mod graph_database;
+mod invoice_details;
 mod lnurl;
 mod node;
 pub mod offer_details;
 mod recipient;
 
 use crate::graph_database::GraphDatabase;
+pub use crate::invoice_details::{Description, RouteHintDetails, RouteHintHopDetails};
 pub use crate::lnurl::resolve_lnurl;
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
 use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
+use chrono::{DateTime, Utc};
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
 use lightning::offers::offer::Offer;
-use lightning_invoice::{Bolt11Invoice, Currency, RouteHint};
+use lightning_invoice::{Bolt11Invoice, RouteHint};
+use std::time::Duration;
+
+#[derive(Debug)]
+pub enum FeatureFlag {
+    Required,
+    Supported,
+    NotSupported,
+}
 
 #[derive(Debug, Default)]
 pub struct InvoiceDetails {
-    pub network: &'static str,
-    pub description: String,
-    pub amount_msat: Option<u64>,
-    // pub date: u64,
-    // pub expires_at: u64,
+    pub network: String,
+    pub description: Description,
+    pub amount: Option<String>,
+    pub payment_hash: String,
+    pub payment_secret: String,
+    pub payment_metadata: Option<String>,
+    pub features: Option<Vec<(String, FeatureFlag)>>,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
+    pub has_expired: bool,
+    pub expiry: Duration,
+    pub min_final_cltv_expiry_delta: u64,
+    pub fallback_addresses: Vec<String>,
+    pub route_hints: Vec<RouteHintDetails>,
+    pub payee_pub_key: String,
+    pub payee_pub_key_recovered: bool,
+    pub signable_hash: String,
 }
 
 #[derive(Debug)]
@@ -60,7 +83,6 @@ impl InvoiceDetective {
     }
 
     pub fn investigate_bolt11(&self, invoice: Bolt11Invoice) -> Result<InvestigativeFindings> {
-        let description = invoice.description().to_string();
         let pubkey = invoice
             .payee_pub_key()
             .copied()
@@ -70,19 +92,7 @@ impl InvoiceDetective {
         let route_hints = self.process_route_hints(&invoice.route_hints())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &route_hints);
 
-        let network = match invoice.currency() {
-            Currency::Bitcoin => "Mainnet",
-            Currency::BitcoinTestnet => "Testnet",
-            Currency::Regtest => "Regtest",
-            Currency::Simnet => "Simnet",
-            Currency::Signet => "Signet",
-        };
-
-        let details = InvoiceDetails {
-            network,
-            description,
-            amount_msat: invoice.amount_milli_satoshis(),
-        };
+        let details = InvoiceDetails::from(&invoice);
 
         Ok(InvestigativeFindings {
             recipient,

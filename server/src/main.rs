@@ -49,7 +49,7 @@ fn invoice(invoice: &str) -> Result<Template, String> {
         RecipientNode::Unknown => ("Unknown", "", String::new(), String::new()),
     };
 
-    let amount = format_msat(findings.details.amount_msat);
+    let amount = format_msat(findings.details.amount);
     let description = findings.details.description;
     let network = findings.details.network;
 

@@ -1,0 +1,62 @@
+<article>
+  <header>
+	<div class="parent">
+	  <div class="div1">
+		The payment request is a <b>BOLT-11 Invoice</b>
+	  </div>
+	  <div class="div2"><button class="share outline">Share</button></div>
+  </header>
+
+  <table>
+	<tbody>
+      <tr><th scope="row"> Network </th><td> {{ invoice.network | capitalize }} </td></tr>
+      <tr><th scope="row"> Amount </th><td> {{ invoice.amount | or_empty }} </td></tr>
+	  <tr>
+		<th scope="row"> Description </th>
+		<td>
+		  {% match invoice.description %}
+		  {% when Description::Direct with (description) %}
+		  {{ description }}
+		  {% when Description::Hash with (hash) %}
+		  {{ hash | hex}}
+		  {{ self::mute("description hash was provided") }}
+		  {% endmatch %}
+		</td>
+	  </tr>
+      <tr><th scope="row"> Created at </th><td> {{ invoice.created_at }} </td></tr>
+      <tr>
+		<th scope="row"> Expiry time </th>
+		<td>
+		  {{ self::format_duration(invoice.expiry) }}
+		  {% if invoice.has_expired %}
+		  <mark>expired</mark>
+		  {% endif %}
+		</td>
+	  </tr>
+
+      <tr><th scope="row"> Payment hash </th><td> {{ invoice.payment_hash | hex }} </td></tr>
+      <tr><th scope="row"> Payment secret </th><td> {{ invoice.payment_secret | hex }} </td></tr>
+      <tr>
+		<th scope="row"> Payee pubkey </th>
+		<td>
+		  {{ invoice.payee_pub_key | hex }}
+		  {% if invoice.payee_pub_key_recovered %}
+		  {{ self::mute("the pubkey was recovered from the invoice signature") }}
+		  {% endif %}
+		</td>
+	  </tr>
+      <tr><th scope="row"> Payment metadata </th><td> {{ invoice.payment_metadata | or_empty }} </td></tr>
+	  <tr>
+		<th scope="row"> Minimum final CLTV expiry </th>
+		<td>
+		  {{ invoice.min_final_cltv_expiry_delta }} block{{ invoice.min_final_cltv_expiry_delta | pluralize }}
+		  (≈ {{ self::format_number_of_blocks(invoice.min_final_cltv_expiry_delta) }})
+		</td>
+	  </tr>
+	  <tr><th scope="row"> Features </th><td> {{ self::format_features(invoice.features) }} </td></tr>
+
+
+	  <tr><th scope="row"> Fallbacks </th><td> </td></tr>
+	</tbody>
+  </table>
+</article>

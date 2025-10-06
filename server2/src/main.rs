@@ -6,8 +6,10 @@ use axum::routing::{get, post};
 use axum::Router;
 use detective::decoder::DecodedData;
 use detective::offer_details::OfferDetails;
+use detective::InvoiceDetails;
 use serde::Deserialize;
 use std::net::SocketAddr;
+use templates::InvoiceTemplate;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -67,12 +69,17 @@ fn parse0(input: &str) -> String {
         Ok(result) => result,
         Err(err) => return ErrorTemplate { err }.render().unwrap(),
     };
-    let offer = match result {
-        DecodedData::Offer(offer) => offer,
+    match result {
+        DecodedData::Offer(offer) => {
+            let offer = OfferDetails::from(offer);
+            let offer_template = OfferTemplate { offer };
+            offer_template.render().unwrap()
+        }
+        DecodedData::Invoice(invoice) => {
+            let invoice = InvoiceDetails::from(&invoice);
+            let invoice_template = InvoiceTemplate { invoice };
+            invoice_template.render().unwrap()
+        }
         _ => panic!(),
-    };
-    let offer = OfferDetails::from(offer);
-
-    let offer_template = OfferTemplate { offer };
-    offer_template.render().unwrap()
+    }
 }
