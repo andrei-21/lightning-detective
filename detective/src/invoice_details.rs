@@ -1,9 +1,6 @@
 use crate::{FeatureFlag, InvoiceDetails};
-use chrono::{DateTime, Utc};
 use lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescriptionRef, RouteHint, RouteHintHop};
-use std::convert::TryInto;
 use std::fmt::Write;
-use std::time::{Duration, SystemTime};
 use thousands::Separable;
 
 #[derive(Debug, Clone)]
@@ -53,11 +50,6 @@ impl From<RouteHintHop> for RouteHintHopDetails {
     }
 }
 
-fn duration_to_datetime(duration: Duration) -> Option<DateTime<Utc>> {
-    let seconds: i64 = duration.as_secs().try_into().ok()?;
-    DateTime::from_timestamp(seconds, duration.subsec_nanos())
-}
-
 fn to_lower_hex(data: impl AsRef<[u8]>) -> String {
     let bytes = data.as_ref();
     let mut output = String::with_capacity(bytes.len() * 2);
@@ -70,7 +62,7 @@ fn to_lower_hex(data: impl AsRef<[u8]>) -> String {
 fn format_msat_0(msat: u64) -> String {
     match msat {
         1000 => "1".to_string(),
-        msat if msat % 1000 == 0 => format!("{}", (msat / 1000).separate_with_commas()),
+        msat if msat % 1000 == 0 => (msat / 1000).separate_with_commas().to_string(),
         msat => {
             let sat = msat / 1000;
             let sat = sat.separate_with_commas();
@@ -83,7 +75,7 @@ fn format_msat_0(msat: u64) -> String {
 fn format_msat(msat: u64) -> String {
     match msat {
         1000 => "1 sat".to_string(),
-        msat if msat % 1000 == 0 => format!("{} sats", (msat / 1000).separate_with_commas()),
+        msat if msat % 1000 == 0 => (msat / 1000).separate_with_commas().to_string(),
         msat => {
             let sat = msat / 1000;
             let sat = sat.separate_with_commas();
@@ -150,12 +142,8 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
         let payment_metadata = invoice.payment_metadata().map(to_lower_hex);
         let features = invoice.features().map(|f| to_features(f.to_string()));
         let created_at = invoice.timestamp().into();
-        let expires_at = invoice.expires_at().and_then(duration_to_datetime);
-        let now_duration = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_else(|_| Duration::from_secs(0));
-        let has_expired = invoice.would_expire(now_duration);
         let expiry = invoice.expiry_time();
+        let has_expired = invoice.is_expired();
         let min_final_cltv_expiry_delta = invoice.min_final_cltv_expiry_delta();
         let fallback_addresses = invoice
             .fallback_addresses()
@@ -180,9 +168,8 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
             payment_metadata,
             features,
             created_at,
-            expires_at,
-            has_expired,
             expiry,
+            has_expired,
             min_final_cltv_expiry_delta,
             fallback_addresses,
             route_hints,

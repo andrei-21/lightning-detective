@@ -53,18 +53,26 @@ pub fn format_duration(duration: &Duration) -> Safe<String> {
 
     let mut parts = Vec::new();
     if days > 0 {
-        parts.push(format!("{days} day{}", if days == 1 { "" } else { "s" }));
+        parts.push(format!("{days} day{}", plural(days)));
     }
     if hrs > 0 {
-        parts.push(format!("{hrs} hour{}", if hrs == 1 { "" } else { "s" }));
+        parts.push(format!("{hrs} hour{}", plural(hrs)));
     }
     if mins > 0 {
-        parts.push(format!("{mins} min{}", if mins == 1 { "" } else { "s" }));
+        parts.push(format!("{mins} min{}", plural(mins)));
     }
     if secs > 0 || parts.is_empty() {
-        parts.push(format!("{secs} second{}", if secs == 1 { "" } else { "s" }));
+        parts.push(format!("{secs} second{}", plural(secs)));
     }
     Safe(parts.join(", "))
+}
+
+fn plural(number: u64) -> &'static str {
+    if number == 1 {
+        ""
+    } else {
+        "s"
+    }
 }
 
 pub fn format_number_of_blocks(number: &u64) -> Safe<String> {
@@ -98,7 +106,7 @@ pub fn format_routing_hints(route: &RouteHintDetails) -> Safe<String> {
 }
 
 pub fn mute(message: &str) -> Safe<String> {
-    Safe(format!("<span class=\"muted\">{}</span>", message))
+    Safe(format!("<span class=\"muted\">{message}</span>"))
 }
 
 pub mod filters {
