@@ -10,23 +10,10 @@
 
   <table>
 	<tbody>
-      <tr><th scope="row"> Id </th><td> <code class="code-value"> {{ offer.id }} </code> </td></tr>
-      <tr>
-		<th scope="row"> Signing pubkey </th>
-		<td>
-		  {% match offer.signing_pubkey %}
-		  {% when Some with (pubkey) %}
-		  <code class="code-value"> {{ pubkey }} </code>
-		  {% when None %}
-		  {{ self::mute("empty, the signing pubkey is the final blinded node id from the path") }}
-		  {% endmatch %}
-		</td>
-	  </tr>
       <tr><th scope="row"> Chain </th><td> {{ offer.chains | join(", ") }} </td></tr>
       <tr><th scope="row"> Amount </th><td> {{ offer.amount | or_empty }} </td></tr>
       <tr><th scope="row"> Quantity </th><td> {{ offer.supported_quantity }} </td></tr>
       <tr><th scope="row"> Description </th><td> {{ offer.description | or_empty }} </td></tr>
-      <tr><th scope="row"> Issuer </th><td> {{ offer.issuer | or_empty }} </td></tr>
       <tr>
 		<th scope="row"> Expires at </th>
 		<td>
@@ -34,6 +21,19 @@
 		  {% if offer.has_expired %}
 		  <mark><abbr title="The offer has already expired">expired</abbr></mark>
 		  {% endif %}
+		</td>
+	  </tr>
+      <tr><th scope="row"> Issuer </th><td> {{ offer.issuer | or_empty }} </td></tr>
+      <tr><th scope="row"> Id </th><td> {{ offer.id | hex }} </td></tr>
+      <tr>
+		<th scope="row"> Signing pubkey </th>
+		<td>
+		  {% match offer.signing_pubkey %}
+		  {% when Some with (pubkey) %}
+		  {{ pubkey | hex }}
+		  {% when None %}
+		  {{ self::mute("empty, the signing pubkey is the final blinded node id from the path") }}
+		  {% endmatch %}
 		</td>
 	  </tr>
       <tr><th scope="row"> Metadata </th><td> {{ offer.metadata | or_empty }} </td></tr>
@@ -44,19 +44,19 @@
 		  Introduction node:
 		  {% match path.introduction_node %}
 		  {% when IntroductionNode::NodeId with (pubkey) %}
-		  <code class="code-value"> {{ pubkey }} </code>
+		  {{ pubkey | hex }}
 		  {% when IntroductionNode::LeftEnd with (channel) %}
 		  <b>Left</b> end of <code> {{ channel }} </code><br>
 		  {% when IntroductionNode::RightEnd with (channel) %}
 		  <b>Right</b> end of <code> {{ channel }} </code><br>
 		  {% endmatch %}
-		  Blinding point: <code class="code-value"> {{ path.blinding_point }} </code>
+		  Blinding point: {{ path.blinding_point | hex }}
 		  <hr />
 		  <ol start="0">
 			{% for hop in path.hops %}
 			<li>
-			  Node id: <code class="code-value"> {{ hop.node_id }} </code>
-			  With encrypted payload: <code class="code-value"> {{ hop.encrypted_payload }} </code>
+			  Node id: {{ hop.node_id | hex }}
+			  With encrypted payload: {{ hop.encrypted_payload | hex }}
 			</li>
 			{% endfor %}
 		  </ol>
@@ -66,7 +66,7 @@
 	  {% if offer.paths.is_empty() %}
       <tr>
 		<th scope="row"> Paths </th>
-		<td> {{ self::mute("empty") }} </td>
+		<td> {{ self::mute("none") }} </td>
 	  </tr>
 	  {% endif %}
 	</tbody>
