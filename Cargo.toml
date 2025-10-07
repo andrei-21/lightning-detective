@@ -3,8 +3,7 @@
 members = [
     "cli",
     "detective",
-    "graph-builder",
-	"server2",
+	"server",
 ]
 
 resolver = "2"
