@@ -28,7 +28,7 @@
       <tr>
 		<th scope="row"> Expiry time </th>
 		<td>
-		  {{ self::format_duration(invoice.expiry) }}
+		  {{ invoice.expiry }}
 		  {% if invoice.has_expired %}
 		  <mark><abbr title="The invoice has already expired">expired</abbr></mark>
 		  {% endif %}
@@ -49,7 +49,7 @@
       <tr><th scope="row"> Payment metadata </th><td> {{ invoice.payment_metadata | or_empty }} </td></tr>
 	  <tr>
 		<th scope="row"> Minimum final CLTV expiry </th>
-		<td> {{ self::format_number_of_blocks(invoice.min_final_cltv_expiry_delta) }} </td>
+		<td> {{ invoice.min_final_cltv_expiry_delta }} </td>
 	  </tr>
 
 	  {% for route in invoice.route_hints %}

@@ -2,10 +2,9 @@ use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
-use detective::resolve_lnurl;
+use detective::{resolve_lnurl, Description, InvoiceDetails};
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
-use thousands::Separable;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -16,6 +15,8 @@ async fn main() -> Result<()> {
 
     match decoded_data {
         DecodedData::Invoice(invoice) => {
+            let invoice_details = InvoiceDetails::from(&invoice);
+            print_invoice_details(invoice_details);
             let findings = invoice_detective.investigate_bolt11(invoice)?;
             print_findings(findings)
         }
@@ -89,14 +90,61 @@ fn print_findings(findings: InvestigativeFindings) {
             .join(" → ");
         println!("     via {hint}");
     }
+}
 
-    let details = findings.details;
-    let amount = format_msat(details.amount);
+fn print_invoice_details(invoice: InvoiceDetails) {
     println!();
     println!("📋 {}", " Details ".reversed());
-    println!("    Network: {}", details.network);
-    println!("     Amount: {amount}");
-    println!("Description: {}", details.description.italic());
+    println!("       Network: {}", invoice.network);
+    println!("        Amount: {}", format_option(&invoice.amount));
+    print!("   Description: ");
+    match invoice.description {
+        Description::Direct(description) if description.is_empty() => {
+            println!("{}", "empty".italic().dimmed())
+        }
+        Description::Direct(description) => println!("{description}"),
+        Description::Hash(hash) => {
+            println!("{hash}");
+            println!(
+                "                {}",
+                "description hash was provided".dimmed().italic()
+            );
+        }
+    };
+    println!("    Created at: {}", invoice.created_at);
+    let has_expired = if invoice.has_expired {
+        " expired ".reversed().yellow()
+    } else {
+        "".into()
+    };
+    println!("   Expiry time: {} {has_expired}", invoice.expiry);
+    println!("  Payment hash: {}", invoice.payment_hash);
+    println!("Payment secret: {}", invoice.payment_secret);
+    println!("  Payee pubkey: {}", invoice.payee_pub_key);
+    if invoice.payee_pub_key_recovered {
+        println!(
+            "                {}",
+            "the pubkey was recovered from the invoice signature"
+                .dimmed()
+                .italic()
+        );
+    }
+    println!(
+        "      Metadata: {}",
+        format_option(&invoice.payment_metadata)
+    );
+    println!("Min final CLTV: {}", invoice.min_final_cltv_expiry_delta);
+    if invoice.route_hints.is_empty() {
+        println!("        Routes: {}", "none".dimmed().italic());
+    } else {
+        println!("        Routes: {}", "todo".red().bold());
+    }
+    println!("      Features: {}", "todo".red().bold());
+    if !invoice.fallback_addresses.is_empty() {
+        println!("     Fallbacks: {}", "todo".red().bold());
+        println!("                {}", " deprecated ".reversed().yellow());
+    }
+    println!();
 }
 
 fn print_bip21(address: String, mut params: Vec<Bip21Param>) {
@@ -124,20 +172,6 @@ fn format_option<T: ToString>(value: &Option<T>) -> ColoredString {
     match value {
         Some(value) => value.to_string().into(),
         None => "empty".italic().dimmed(),
-    }
-}
-
-fn format_msat(msat: Option<u64>) -> String {
-    match msat {
-        None => "empty".to_string(),
-        Some(1000) => "1 sat".to_string(),
-        Some(msat) if msat % 1000 == 0 => format!("{} sats", (msat / 1000).separate_with_commas()),
-        Some(msat) => {
-            let sat = msat / 1000;
-            let sat = sat.separate_with_commas();
-            let msat = msat % 1000;
-            format!("{sat}.{msat:03} sats")
-        }
     }
 }
 

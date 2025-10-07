@@ -8,53 +8,25 @@ pub mod offer_details;
 mod recipient;
 
 use crate::graph_database::GraphDatabase;
-pub use crate::invoice_details::{Description, RouteHintDetails, RouteHintHopDetails};
+pub use crate::invoice_details::{
+    Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
+};
 pub use crate::lnurl::resolve_lnurl;
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
 use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
-use chrono::{DateTime, Utc};
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
 use lightning::offers::offer::Offer;
 use lightning_invoice::{Bolt11Invoice, RouteHint};
-use std::time::Duration;
-
-#[derive(Debug)]
-pub enum FeatureFlag {
-    Required,
-    Supported,
-    NotSupported,
-}
-
-#[derive(Debug, Default)]
-pub struct InvoiceDetails {
-    pub network: String,
-    pub description: Description,
-    pub amount: Option<String>,
-    pub payment_hash: String,
-    pub payment_secret: String,
-    pub payment_metadata: Option<String>,
-    pub features: Option<Vec<(String, FeatureFlag)>>,
-    pub created_at: DateTime<Utc>,
-    pub expiry: Duration,
-    pub has_expired: bool,
-    pub min_final_cltv_expiry_delta: u64,
-    pub fallback_addresses: Vec<String>,
-    pub route_hints: Vec<RouteHintDetails>,
-    pub payee_pub_key: String,
-    pub payee_pub_key_recovered: bool,
-    pub signable_hash: String,
-}
 
 #[derive(Debug)]
 pub struct InvestigativeFindings {
     pub recipient: RecipientNode,
     pub payee: Node,
     pub route_hints: Vec<Vec<Node>>,
-    pub details: InvoiceDetails,
 }
 
 pub struct InvoiceDetective {
@@ -91,13 +63,10 @@ impl InvoiceDetective {
         let route_hints = self.process_route_hints(&invoice.route_hints())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &route_hints);
 
-        let details = InvoiceDetails::from(&invoice);
-
         Ok(InvestigativeFindings {
             recipient,
             payee,
             route_hints,
-            details,
         })
     }
 
@@ -110,12 +79,10 @@ impl InvoiceDetective {
             let payee = self.graph_database.query(pubkey.clone())?;
             let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
 
-            let details = InvoiceDetails::default();
             return Ok(InvestigativeFindings {
                 recipient,
                 payee,
                 route_hints: Vec::new(),
-                details,
             });
         }
 
@@ -140,12 +107,10 @@ impl InvoiceDetective {
         let payee = self.graph_database.query(pubkey.clone())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
 
-        let details = InvoiceDetails::default();
         Ok(InvestigativeFindings {
             recipient,
             payee,
             route_hints: Vec::new(),
-            details,
         })
     }
 

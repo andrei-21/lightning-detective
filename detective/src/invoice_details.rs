@@ -1,7 +1,35 @@
-use crate::{FeatureFlag, InvoiceDetails};
+use chrono::{DateTime, Utc};
 use lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescriptionRef, RouteHint, RouteHintHop};
 use std::fmt::Write;
+use std::time::Duration;
 use thousands::Separable;
+
+#[derive(Debug)]
+pub enum FeatureFlag {
+    Required,
+    Supported,
+    NotSupported,
+}
+
+#[derive(Debug, Default)]
+pub struct InvoiceDetails {
+    pub network: String,
+    pub description: Description,
+    pub amount: Option<String>,
+    pub payment_hash: String,
+    pub payment_secret: String,
+    pub payment_metadata: Option<String>,
+    pub features: Option<Vec<(String, FeatureFlag)>>,
+    pub created_at: DateTime<Utc>,
+    pub expiry: String,
+    pub has_expired: bool,
+    pub min_final_cltv_expiry_delta: String,
+    pub fallback_addresses: Vec<String>,
+    pub route_hints: Vec<RouteHintDetails>,
+    pub payee_pub_key: String,
+    pub payee_pub_key_recovered: bool,
+    pub signable_hash: String,
+}
 
 #[derive(Debug, Clone)]
 pub struct RouteHintHopDetails {
@@ -9,7 +37,7 @@ pub struct RouteHintHopDetails {
     pub short_channel_id: u64,
     pub base_fee: String,
     pub proportional_fee: String,
-    pub cltv_expiry_delta: u16,
+    pub cltv_expiry_delta: String,
     pub htlc_limits: String,
 }
 
@@ -44,7 +72,7 @@ impl From<RouteHintHop> for RouteHintHopDetails {
             short_channel_id: hop.short_channel_id,
             base_fee: format_msat(hop.fees.base_msat as u64),
             proportional_fee: format_proportional(hop.fees.proportional_millionths),
-            cltv_expiry_delta: hop.cltv_expiry_delta,
+            cltv_expiry_delta: format_number_of_blocks(hop.cltv_expiry_delta as u64),
             htlc_limits: format_limits(hop.htlc_minimum_msat, hop.htlc_maximum_msat),
         }
     }
@@ -75,7 +103,7 @@ fn format_msat_0(msat: u64) -> String {
 fn format_msat(msat: u64) -> String {
     match msat {
         1000 => "1 sat".to_string(),
-        msat if msat % 1000 == 0 => (msat / 1000).separate_with_commas().to_string(),
+        msat if msat % 1000 == 0 => format!("{} sats", (msat / 1000).separate_with_commas()),
         msat => {
             let sat = msat / 1000;
             let sat = sat.separate_with_commas();
@@ -142,9 +170,10 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
         let payment_metadata = invoice.payment_metadata().map(to_lower_hex);
         let features = invoice.features().map(|f| to_features(f.to_string()));
         let created_at = invoice.timestamp().into();
-        let expiry = invoice.expiry_time();
+        let expiry = format_duration(&invoice.expiry_time());
         let has_expired = invoice.is_expired();
-        let min_final_cltv_expiry_delta = invoice.min_final_cltv_expiry_delta();
+        let min_final_cltv_expiry_delta =
+            format_number_of_blocks(invoice.min_final_cltv_expiry_delta());
         let fallback_addresses = invoice
             .fallback_addresses()
             .into_iter()
@@ -178,6 +207,46 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
             signable_hash,
         }
     }
+}
+
+fn format_duration(duration: &Duration) -> String {
+    let secs = duration.as_secs();
+    let (days, hrs, mins, secs) = (
+        secs / 86400,
+        (secs % 86400) / 3600,
+        (secs % 3600) / 60,
+        secs % 60,
+    );
+
+    let mut parts = Vec::new();
+    if days > 0 {
+        parts.push(format!("{days} day{}", plural(days)));
+    }
+    if hrs > 0 {
+        parts.push(format!("{hrs} hour{}", plural(hrs)));
+    }
+    if mins > 0 {
+        parts.push(format!("{mins} min{}", plural(mins)));
+    }
+    if secs > 0 || parts.is_empty() {
+        parts.push(format!("{secs} second{}", plural(secs)));
+    }
+    parts.join(", ")
+}
+
+fn plural(number: u64) -> &'static str {
+    if number == 1 {
+        ""
+    } else {
+        "s"
+    }
+}
+
+fn format_number_of_blocks(number: u64) -> String {
+    let s = if number == 1 { "" } else { "s" };
+    let duration = Duration::from_secs(60 * 10 * number);
+    let duration = format_duration(&duration);
+    format!("{number} block{s} (≈ {duration})")
 }
 
 #[cfg(test)]

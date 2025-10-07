@@ -4,7 +4,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 RUN update-ca-certificates
 
 COPY graph.db3 .
-COPY templates/ templates/
 COPY target/release/server .
 
 USER 1000
