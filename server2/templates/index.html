@@ -38,21 +38,23 @@
 		  font-style: italic;
 	  }
 	  .privacy-note {
-		  margin-top: calc(var(--block-spacing-vertical) * 0.3);
 		  margin-bottom: calc(var(--block-spacing-vertical) * 0.3);
 		  padding: calc(var(--spacing) * 0.75);
 		  border-left: 4px solid rgba(234, 179, 8, 0.7);
 		  background-color: rgba(250, 204, 21, 0.18);
 		  border-radius: var(--border-radius);
+		  display: flex;
+		  align-items: flex-start;
+		  flex-wrap: wrap;
+	  }
+	  .privacy-note .dismiss-note {
+		  margin-left: auto;
 	  }
 	  .container {
 		  padding-block: calc(var(--spacing) * 0.5);
 	  }
 	  th, td {
 		  padding: calc(var(--spacing) / 2) calc(var(--spacing) / 4)
-	  }
-	  textarea {
-		  margin-bottom: 0;
 	  }
 	  section,
 	  table {
@@ -112,22 +114,26 @@
 	  </hgroup>
 
 	  <section>
-      <form
-        hx-post="/api/parse"
-        hx-target="#result"
-        hx-swap="innerHTML"
-        novalidate>
-        <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno...">{{ request }}</textarea>
-        <p class="privacy-note" role="note">
-		  Requests are processed on the server without being logged.
-		  Nevertheless, please avoid including sensitive personal information;
-		  for sensitive requests, consider using the <a href="https://github.com/andrei-21/lightning-detective" target="_blank" rel="noreferrer">CLI version</a>.
-		</p>
-        <div class="grid">
-          <button type="submit" id="htmxBtn">Investigate</button>
-          <button type="button" id="clearBtn" class="secondary" disabled>Clear</button>
-        </div>
-      </form>
+		<form
+          hx-post="/api/parse"
+          hx-target="#result"
+          hx-swap="innerHTML"
+          novalidate>
+          <textarea id="text" name="text" rows="6" placeholder="lnbc... or lno...">{{ request }}</textarea>
+          <p class="privacy-note" role="note" id="privacyNote">
+			<span>
+			  Requests are processed on the server without being logged.
+			  Nevertheless, please avoid including sensitive personal information;
+			  for sensitive requests, consider using the
+			  <a href="https://github.com/andrei-21/lightning-detective" target="_blank" rel="noreferrer">CLI version</a>.
+			</span>
+			<a href="#" class="dismiss-note secondary" id="dismissPrivacyNote">Dismiss</a>
+		  </p>
+          <div class="grid">
+			<button type="submit" id="htmxBtn">Investigate</button>
+			<button type="button" id="clearBtn" class="secondary" disabled>Reset</button>
+          </div>
+		</form>
 	  </section>
 
       <section id="result" aria-live="polite">{{ result }}</section>
@@ -233,6 +239,46 @@
 	<script>
 	  (function(){
 	      var form = document.querySelector('form[hx-post]');
+	      var privacyNote = document.getElementById('privacyNote');
+	      var dismissPrivacyNote = document.getElementById('dismissPrivacyNote');
+	      var PRIVACY_NOTE_COOKIE = 'privacyNoteDismissed';
+	      var PRIVACY_NOTE_MAX_AGE = 60 * 60 * 24 * 180; // roughly 6 months
+
+	      function hasDismissedPrivacyNote(){
+	          if(!document.cookie) return false;
+	          var cookies = document.cookie.split(';');
+	          for(var i = 0; i < cookies.length; i++){
+	              var cookie = cookies[i].trim();
+	              if(cookie.indexOf(PRIVACY_NOTE_COOKIE + '=') === 0){
+	                  return cookie.substring(PRIVACY_NOTE_COOKIE.length + 1) === 'true';
+	              }
+	          }
+	          return false;
+	      }
+
+	      function rememberPrivacyNoteDismissal(){
+	          try {
+	              document.cookie = PRIVACY_NOTE_COOKIE + '=true; path=/; max-age=' + PRIVACY_NOTE_MAX_AGE;
+	          } catch (err) {
+	              console.error('Unable to persist privacy note dismissal', err);
+	          }
+	      }
+
+	      if(privacyNote && hasDismissedPrivacyNote()){
+	          privacyNote.remove();
+	          privacyNote = null;
+	      }
+
+	      if(privacyNote && dismissPrivacyNote){
+	          dismissPrivacyNote.addEventListener('click', function(event){
+	              event.preventDefault();
+	              rememberPrivacyNoteDismissal();
+	              if(privacyNote){
+	                  privacyNote.remove();
+	                  privacyNote = null;
+	              }
+	          });
+	      }
 	      if(!form) return;
 	      var textarea = document.getElementById('text');
 	      var submitBtn = form.querySelector('button[type="submit"]');
@@ -347,6 +393,16 @@
 
 	      if(textarea){
 	          textarea.addEventListener('input', updateInputState);
+	          textarea.addEventListener('keydown', function(event){
+	              if(event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey && !event.metaKey){
+	                  event.preventDefault();
+	                  if(form && typeof form.requestSubmit === 'function'){
+	                      form.requestSubmit();
+	                  } else if(form){
+	                      form.submit();
+	                  }
+	              }
+	          });
 	      }
 	      if(clearBtn){
 	          clearBtn.addEventListener('click', function(){
