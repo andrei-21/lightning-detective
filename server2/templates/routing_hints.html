@@ -1,0 +1,12 @@
+<ol start="0">
+  {% for hop in route.hops %}
+  <li>
+	Source node id: {{ hop.src_node_id | hex }}
+	Short channel is: {{ hop.short_channel_id | hex }}
+	Fee: base {{ hop.base_fee }}, proportional {{ hop.proportional_fee }}<br>
+	CTLV expiry delta: {{ self::format_number_of_blocks(hop.cltv_expiry_delta as u64) }}<br>
+	HTLC size: {{ hop.htlc_limits }}
+  </li>
+
+  {% endfor %}
+</ol>

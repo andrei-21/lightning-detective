@@ -2,7 +2,7 @@ use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
 use detective::offer_details::{IntroductionNode, OfferDetails};
-use detective::{Description, FeatureFlag, InvoiceDetails};
+use detective::{Description, FeatureFlag, InvoiceDetails, RouteHintDetails};
 use std::time::Duration;
 
 #[derive(Template)]
@@ -36,6 +36,12 @@ pub struct FeaturesTemplate<'a> {
     pub features: &'a Vec<(String, FeatureFlag)>,
 }
 
+#[derive(Template)]
+#[template(path = "routing_hints.html")]
+pub struct RouteHintsTemplate<'a> {
+    pub route: &'a RouteHintDetails,
+}
+
 pub fn format_duration(duration: &Duration) -> Safe<String> {
     let secs = duration.as_secs();
     let (days, hrs, mins, secs) = (
@@ -62,7 +68,10 @@ pub fn format_duration(duration: &Duration) -> Safe<String> {
 }
 
 pub fn format_number_of_blocks(number: &u64) -> Safe<String> {
-    format_duration(&Duration::from_secs(60 * 10 * number))
+    let s = if *number == 1 { "s" } else { "" };
+    let duration = Duration::from_secs(60 * 10 * number);
+    let duration = format_duration(&duration);
+    Safe(format!("{number} block{s} (≈ {duration})"))
 }
 
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
@@ -82,6 +91,10 @@ pub fn format_features(features: &Option<Vec<(String, FeatureFlag)>>) -> Safe<St
         None => return mute("empty"),
     };
     Safe(FeaturesTemplate { features }.render().unwrap())
+}
+
+pub fn format_routing_hints(route: &RouteHintDetails) -> Safe<String> {
+    Safe(RouteHintsTemplate { route }.render().unwrap())
 }
 
 pub fn mute(message: &str) -> Safe<String> {

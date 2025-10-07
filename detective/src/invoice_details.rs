@@ -10,11 +10,10 @@ use thousands::Separable;
 pub struct RouteHintHopDetails {
     pub src_node_id: String,
     pub short_channel_id: u64,
-    pub fees_base_msat: u32,
-    pub fees_proportional_millionths: u32,
+    pub base_fee: String,
+    pub proportional_fee: String,
     pub cltv_expiry_delta: u16,
-    pub htlc_minimum_msat: Option<u64>,
-    pub htlc_maximum_msat: Option<u64>,
+    pub htlc_limits: String,
 }
 
 #[derive(Debug, Clone)]
@@ -30,16 +29,26 @@ impl From<RouteHint> for RouteHintDetails {
     }
 }
 
+fn format_limits(min_msat: Option<u64>, max_msat: Option<u64>) -> String {
+    match (min_msat, max_msat) {
+        (None, None) => "any".to_string(),
+        (Some(min_msat), None) => format!("≥ {}", format_msat(min_msat)),
+        (None, Some(max_msat)) => format!("≤ {}", format_msat(max_msat)),
+        (Some(min_msat), Some(max_msat)) => {
+            format!("{}–{}", format_msat_0(min_msat), format_msat_0(max_msat))
+        }
+    }
+}
+
 impl From<RouteHintHop> for RouteHintHopDetails {
     fn from(hop: RouteHintHop) -> Self {
         Self {
             src_node_id: hop.src_node_id.to_string(),
             short_channel_id: hop.short_channel_id,
-            fees_base_msat: hop.fees.base_msat,
-            fees_proportional_millionths: hop.fees.proportional_millionths,
+            base_fee: format_msat(hop.fees.base_msat as u64),
+            proportional_fee: format_proportional(hop.fees.proportional_millionths),
             cltv_expiry_delta: hop.cltv_expiry_delta,
-            htlc_minimum_msat: hop.htlc_minimum_msat,
-            htlc_maximum_msat: hop.htlc_maximum_msat,
+            htlc_limits: format_limits(hop.htlc_minimum_msat, hop.htlc_maximum_msat),
         }
     }
 }
@@ -58,6 +67,19 @@ fn to_lower_hex(data: impl AsRef<[u8]>) -> String {
     output
 }
 
+fn format_msat_0(msat: u64) -> String {
+    match msat {
+        1000 => "1".to_string(),
+        msat if msat % 1000 == 0 => format!("{}", (msat / 1000).separate_with_commas()),
+        msat => {
+            let sat = msat / 1000;
+            let sat = sat.separate_with_commas();
+            let msat = msat % 1000;
+            format!("{sat}.{msat:03}")
+        }
+    }
+}
+
 fn format_msat(msat: u64) -> String {
     match msat {
         1000 => "1 sat".to_string(),
@@ -69,6 +91,17 @@ fn format_msat(msat: u64) -> String {
             format!("{sat}.{msat:03} sats")
         }
     }
+}
+
+fn format_proportional(ppm: u32) -> String {
+    let percents = ppm / 10_000;
+    let fraction = ppm % 10_000;
+    if fraction == 0 {
+        return format!("{percents}%");
+    }
+    let fraction = format!("{fraction:04}");
+    let fraction = fraction.trim_end_matches('0');
+    format!("{percents}.{fraction}%")
 }
 
 fn to_features(features: String) -> Vec<(String, FeatureFlag)> {
@@ -157,5 +190,19 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
             payee_pub_key_recovered,
             signable_hash,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::format_proportional;
+
+    #[test]
+    fn test_format_proportional() {
+        assert_eq!(format_proportional(120_000), "12%");
+        assert_eq!(format_proportional(120_100), "12.01%");
+        assert_eq!(format_proportional(120_010), "12.001%");
+        assert_eq!(format_proportional(120_001), "12.0001%");
+        assert_eq!(format_proportional(120_110), "12.011%");
     }
 }

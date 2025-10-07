@@ -29,7 +29,7 @@
 		<td>
 		  {{ self::format_duration(invoice.expiry) }}
 		  {% if invoice.has_expired %}
-		  <mark>expired</mark>
+		  <mark><abbr title="The invoice has already expired">expired</abbr></mark>
 		  {% endif %}
 		</td>
 	  </tr>
@@ -48,15 +48,43 @@
       <tr><th scope="row"> Payment metadata </th><td> {{ invoice.payment_metadata | or_empty }} </td></tr>
 	  <tr>
 		<th scope="row"> Minimum final CLTV expiry </th>
+		<td> {{ self::format_number_of_blocks(invoice.min_final_cltv_expiry_delta) }} </td>
+	  </tr>
+
+	  {% for route in invoice.route_hints %}
+	  <tr>
+		<th scope="row">
+		  Route #{{ loop.index0 }}
+		</th>
 		<td>
-		  {{ invoice.min_final_cltv_expiry_delta }} block{{ invoice.min_final_cltv_expiry_delta | pluralize }}
-		  (≈ {{ self::format_number_of_blocks(invoice.min_final_cltv_expiry_delta) }})
+		  {{ self::format_routing_hints(route) }}
 		</td>
 	  </tr>
+	  {% endfor %}
+	  {% if invoice.route_hints.is_empty() %}
+	  <tr>
+		<th scope="row"> Routes	</th>
+		<td> {{ self::mute("none") }} </td>
+	  </tr>
+	  {% endif %}
+
+
 	  <tr><th scope="row"> Features </th><td> {{ self::format_features(invoice.features) }} </td></tr>
 
+	  {% if !invoice.fallback_addresses.is_empty() %}
+	  <tr>
+		<th scope="row">
+		  Fallbacks
+		  <mark><abbr title="Fallback addresses might be deprecated in the near future in favor of using BIP-21 or BIP-353">deprecated</abbr></mark>
+		</th>
+		<td>
+		  {% for address in invoice.fallback_addresses %}
+		  {{ address | hex }}
+		  {% endfor %}
+		</td>
+	  </tr>
+	  {% endif %}
 
-	  <tr><th scope="row"> Fallbacks </th><td> </td></tr>
 	</tbody>
   </table>
 </article>

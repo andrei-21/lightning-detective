@@ -31,7 +31,7 @@
 		<td>
 		  {{ offer.expires_at | or_empty }}
 		  {% if offer.has_expired %}
-		  <mark>expired</mark>
+		  <mark><abbr title="The offer has already expired">expired</abbr></mark>
 		  {% endif %}
 		</td>
 	  </tr>
