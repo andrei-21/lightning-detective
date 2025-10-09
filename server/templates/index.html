@@ -568,6 +568,30 @@
 	                  }
 	              }
 	          });
+
+              // Enable auto-submit on paste only if privacy note is dismissed
+              function setupPasteHandler() {
+                  if (hasDismissedPrivacyNote()) {
+                      textarea.addEventListener('paste', function(event) {
+                          // Small delay to ensure the pasted content is in the textarea
+                          setTimeout(function() {
+                              if(form && typeof form.requestSubmit === 'function'){
+                                  form.requestSubmit();
+                              } else if(form){
+                                  form.submit();
+                              }
+                          }, 0);
+                      });
+                  }
+              }
+              // Initial setup
+              setupPasteHandler();
+              // Also set up when privacy note is dismissed
+              if (dismissPrivacyNote) {
+                  dismissPrivacyNote.addEventListener('click', function() {
+                      setupPasteHandler();
+                  }, { once: true });
+              }
 	      }
 	      if(clearBtn){
 	          clearBtn.addEventListener('click', function(){
