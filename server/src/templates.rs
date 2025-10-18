@@ -98,6 +98,16 @@ pub mod filters {
         Ok(s)
     }
 
+    pub fn or_empty_hex<T: std::fmt::Display>(
+        s: &Option<T>,
+        v: &dyn Values,
+    ) -> Result<Safe<String>> {
+        match s {
+            Some(s) => hex(s, v),
+            None => Ok(mute("empty")),
+        }
+    }
+
     pub fn hex<T: std::fmt::Display>(s: &T, _: &dyn Values) -> Result<Safe<String>> {
         Ok(Safe(format!("<code class=\"code-value\">{s}</code>")))
     }

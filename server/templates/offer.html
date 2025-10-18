@@ -36,7 +36,7 @@
 		  {% endmatch %}
 		</td>
 	  </tr>
-      <tr><th scope="row"> Metadata </th><td> {{ offer.metadata | or_empty }} </td></tr>
+      <tr><th scope="row"> Metadata </th><td> {{ offer.metadata | or_empty_hex }} </td></tr>
 	  {% for path in offer.paths %}
       <tr>
 		<th scope="row"> Path #{{ loop.index0 }} </th>

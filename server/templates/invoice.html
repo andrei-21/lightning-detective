@@ -92,7 +92,7 @@
 		  {% endif %}
 		</td>
 	  </tr>
-      <tr><th scope="row"> Payment metadata </th><td> {{ invoice.payment_metadata | or_empty }} </td></tr>
+      <tr><th scope="row"> Payment metadata </th><td> {{ invoice.payment_metadata | or_empty_hex }} </td></tr>
 	  <tr>
 		<th scope="row"> Minimum final CLTV expiry </th>
 		<td> {{ invoice.min_final_cltv_expiry_delta }} </td>
