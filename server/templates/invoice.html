@@ -8,6 +8,52 @@
 	</div>
   </header>
 
+  <h5>🔎 Investigative Findings</h5>
+  <p>
+	{% match findings.recipient %}
+	{% when RecipientNode::Custodial { custodian } %}
+	Custodial {{ custodian.service }} <b>{{ custodian.name }}</b>
+
+	{% when RecipientNode::NonCustodial { id, lsp } %}
+	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b> with id <b>{{ id }}</b>
+
+	{% when RecipientNode::NonCustodialWrapped { lsp } %}
+	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b>
+
+	{% when RecipientNode::Unknown %}
+	Unknown
+
+	{% endmatch %}
+  </p>
+
+  <h5>🗃️ Evidences</h5>
+  <p>
+  Pay to
+  {% if findings.payee.is_announced %}
+  public node <b>{{ self::explorer_link(findings.payee) }}</b>
+  {% else %}
+
+  private node <b>{{ findings.payee.pubkey | hex }}</b>
+
+  {% for route in findings.route_hints %}
+  {% for hop in route %}
+  via
+  <ol start="0">
+	<li>
+	  {% if hop.is_announced %}
+	  public node <b>{{ self::explorer_link(hop) }}</b>
+	  {% else %}
+	  private node <b>{{ hop.pubkey | hex }}</b>
+	  {% endif %}
+	</li>
+  </ol>
+  {% endfor %}
+  {% endfor %}
+
+  {% endif %}
+  </p>
+
+  <h5>📋 Details</h5>
   <table>
 	<tbody>
       <tr><th scope="row"> Network </th><td> {{ invoice.network | capitalize }} </td></tr>

@@ -2,7 +2,10 @@ use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
 use detective::offer_details::{IntroductionNode, OfferDetails};
-use detective::{Description, FeatureFlag, InvoiceDetails, RouteHintDetails};
+use detective::{
+    Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node, RecipientNode,
+    RouteHintDetails,
+};
 
 #[derive(Template)]
 #[template(path = "index.html")]
@@ -27,6 +30,7 @@ pub struct OfferTemplate {
 #[template(path = "invoice.html")]
 pub struct InvoiceTemplate {
     pub invoice: InvoiceDetails,
+    pub findings: InvestigativeFindings,
 }
 
 #[derive(Template)]
@@ -66,6 +70,16 @@ pub fn format_routing_hints(route: &RouteHintDetails) -> Safe<String> {
 
 pub fn mute(message: &str) -> Safe<String> {
     Safe(format!("<span class=\"muted\">{message}</span>"))
+}
+
+pub fn external_link(href: &str, title: &str) -> Safe<String> {
+    Safe(format!(
+        "<a href=\"{href}\" target=\"_blank\" rel=\"noreferrer\">{title}</a>"
+    ))
+}
+
+pub fn explorer_link(node: &Node) -> Safe<String> {
+    external_link(&node.pubkey, node.alias.as_ref().unwrap_or(&node.pubkey))
 }
 
 pub mod filters {

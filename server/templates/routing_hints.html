@@ -2,7 +2,7 @@
   {% for hop in route.hops %}
   <li>
 	Source node id: {{ hop.src_node_id | hex }}
-	Short channel is: {{ hop.short_channel_id | hex }}
+	Short channel id: {{ hop.short_channel_id | hex }}
 	Fee: base {{ hop.base_fee }}, proportional {{ hop.proportional_fee }}<br>
 	CTLV expiry delta: {{ hop.cltv_expiry_delta }}<br>
 	HTLC size: {{ hop.htlc_limits }}

@@ -17,7 +17,7 @@ async fn main() -> Result<()> {
         DecodedData::Invoice(invoice) => {
             let invoice_details = InvoiceDetails::from(&invoice);
             print_invoice_details(invoice_details);
-            let findings = invoice_detective.investigate_bolt11(invoice)?;
+            let findings = invoice_detective.investigate_bolt11(&invoice)?;
             print_findings(findings)
         }
         DecodedData::Offer(offer) => {

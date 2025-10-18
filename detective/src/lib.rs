@@ -50,10 +50,10 @@ impl InvoiceDetective {
             .trim()
             .parse::<Bolt11Invoice>()
             .map_err(Error::msg)?;
-        self.investigate_bolt11(invoice)
+        self.investigate_bolt11(&invoice)
     }
 
-    pub fn investigate_bolt11(&self, invoice: Bolt11Invoice) -> Result<InvestigativeFindings> {
+    pub fn investigate_bolt11(&self, invoice: &Bolt11Invoice) -> Result<InvestigativeFindings> {
         let pubkey = invoice
             .payee_pub_key()
             .copied()

@@ -9,6 +9,17 @@ pub enum ServiceKind {
     Lsp,
 }
 
+impl std::fmt::Display for ServiceKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ServiceKind::BusinessWallet => write!(f, "Payment processor"),
+            ServiceKind::ConsumerWallet => write!(f, "Consumer wallet"),
+            ServiceKind::Exchange => write!(f, "Exchange"),
+            ServiceKind::Lsp => write!(f, "LSP"),
+        }
+    }
+}
+
 #[derive(PartialEq, Clone, Debug, Serialize)]
 pub struct Provider {
     pub service: ServiceKind,

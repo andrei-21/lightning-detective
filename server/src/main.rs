@@ -69,6 +69,7 @@ fn parse0(input: &str) -> String {
         Ok(result) => result,
         Err(err) => return ErrorTemplate { err }.render().unwrap(),
     };
+    let detective = detective::InvoiceDetective::new().unwrap();
     match result {
         DecodedData::Offer(offer) => {
             let offer = OfferDetails::from(offer);
@@ -76,8 +77,9 @@ fn parse0(input: &str) -> String {
             offer_template.render().unwrap()
         }
         DecodedData::Invoice(invoice) => {
+            let findings = detective.investigate_bolt11(&invoice).unwrap();
             let invoice = InvoiceDetails::from(&invoice);
-            let invoice_template = InvoiceTemplate { invoice };
+            let invoice_template = InvoiceTemplate { invoice, findings };
             invoice_template.render().unwrap()
         }
         _ => panic!(),
