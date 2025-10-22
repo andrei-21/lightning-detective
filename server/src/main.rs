@@ -25,13 +25,14 @@ async fn main() {
         ))
         .with(tracing_subscriber::fmt::layer())
         .init();
+    tracing::info!("Starting...");
 
     let app = Router::new()
         .route("/", get(index))
         .route("/api/parse", post(parse));
 
     let addr: SocketAddr = "0.0.0.0:3000".parse().unwrap();
-    tracing::info!("listening on http://{addr}");
+    tracing::info!("Listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

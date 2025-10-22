@@ -2,4 +2,3 @@
 Dockerfile
 compose.yaml
 target
-!target/release/server
