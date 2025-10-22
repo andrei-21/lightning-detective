@@ -1,6 +1,7 @@
 use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
+use build_html::{Html, HtmlElement, HtmlTag};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node, RecipientNode,
@@ -47,13 +48,17 @@ pub struct RouteHintsTemplate<'a> {
 
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
     let result = match flag {
-        FeatureFlag::Required => "<mark class=\"badge-required\">required</mark>".to_string(),
-        FeatureFlag::Supported => "<mark class=\"badge-supported\">supported</mark>".to_string(),
-        FeatureFlag::NotSupported => {
-            "<mark class=\"badge-not-supported\">not supported</mark>".to_string()
-        }
+        FeatureFlag::Required => HtmlElement::new(HtmlTag::Mark)
+            .with_attribute("class", "badge-required")
+            .with_child("required".into()),
+        FeatureFlag::Supported => HtmlElement::new(HtmlTag::Mark)
+            .with_attribute("class", "badge-supported")
+            .with_child("supported".into()),
+        FeatureFlag::NotSupported => HtmlElement::new(HtmlTag::Mark)
+            .with_attribute("class", "badge-not-supported")
+            .with_child("not supported".into()),
     };
-    Safe(result)
+    Safe(result.to_html_string())
 }
 
 pub fn format_features(features: &Option<Vec<(String, FeatureFlag)>>) -> Safe<String> {
@@ -69,23 +74,36 @@ pub fn format_routing_hints(route: &RouteHintDetails) -> Safe<String> {
 }
 
 pub fn mute(message: &str) -> Safe<String> {
-    Safe(format!("<span class=\"muted\">{message}</span>"))
+    Safe(
+        HtmlElement::new(HtmlTag::Span)
+            .with_attribute("class", "muted")
+            .with_child(message.into())
+            .to_html_string(),
+    )
 }
 
-pub fn external_link(href: &str, title: &str) -> Safe<String> {
-    Safe(format!(
-        "<a href=\"{href}\" target=\"_blank\" rel=\"noreferrer\">{title}</a>"
-    ))
+pub fn external_link(link: &str, title: &str) -> Safe<String> {
+    Safe(
+        HtmlElement::new(HtmlTag::Link)
+            .with_attribute("href", link)
+            .with_attribute("target", "_blank")
+            .with_attribute("rel", "noreferrer")
+            .with_child(title.into())
+            .to_html_string(),
+    )
 }
 
 pub fn explorer_link(node: &Node) -> Safe<String> {
-    external_link(&node.pubkey, node.alias.as_ref().unwrap_or(&node.pubkey))
+    const EXPLORER_URL: &str = "https://mempool.space/lightning/node";
+    let link = format!("{EXPLORER_URL}/{}", node.pubkey);
+    external_link(&link, node.alias.as_ref().unwrap_or(&node.pubkey))
 }
 
 pub mod filters {
     use super::mute;
     use askama::filters::{MaybeSafe, Safe};
     use askama::{Result, Values};
+    use build_html::{Html, HtmlElement, HtmlTag};
 
     pub fn or_empty<T: std::fmt::Display>(
         s: &Option<T>,
@@ -109,6 +127,11 @@ pub mod filters {
     }
 
     pub fn hex<T: std::fmt::Display>(s: &T, _: &dyn Values) -> Result<Safe<String>> {
-        Ok(Safe(format!("<code class=\"code-value\">{s}</code>")))
+        Ok(Safe(
+            HtmlElement::new(HtmlTag::CodeText)
+                .with_attribute("class", "code-value")
+                .with_child(s.to_string().into())
+                .to_html_string(),
+        ))
     }
 }
