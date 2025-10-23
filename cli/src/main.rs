@@ -1,3 +1,5 @@
+#![warn(unused_crate_dependencies)]
+
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21Param, DecodedData};
@@ -5,6 +7,7 @@ use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{resolve_lnurl, Description, InvoiceDetails};
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
+use tokio::sync::mpsc;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -30,16 +33,20 @@ async fn main() -> Result<()> {
             println!("{refund:?}")
         }
         DecodedData::LnUrl(lnurl) => {
-            let invoice = resolve_lnurl(lnurl).await?;
-            println!("Investigating invoice: {invoice}");
-            let findings = invoice_detective.investigate(&invoice)?;
-            print_findings(findings)
+            println!("{lnurl:?}");
+            let (tx, mut rx) = mpsc::channel(100);
+            tokio::spawn(resolve_lnurl(lnurl, tx));
+            while let Some(event) = rx.recv().await {
+                println!("{event:?}");
+            }
         }
         DecodedData::LightningAddress(address) => {
-            let invoice = resolve_lnurl(address.lnurl()).await?;
-            println!("Investigating invoice: {invoice}");
-            let findings = invoice_detective.investigate(&invoice)?;
-            print_findings(findings)
+            println!("{address:?}");
+            let (tx, mut rx) = mpsc::channel(100);
+            tokio::spawn(resolve_lnurl(address.lnurl(), tx));
+            while let Some(event) = rx.recv().await {
+                println!("{event:?}");
+            }
         }
         DecodedData::Bip21(address, params) => {
             print_bip21(address, params);

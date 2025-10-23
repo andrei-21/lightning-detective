@@ -1,3 +1,5 @@
+#![warn(unused_crate_dependencies)]
+
 use askama::filters::Safe;
 use askama::Template;
 use axum::extract::{Form, Query};

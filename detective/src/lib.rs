@@ -1,3 +1,5 @@
+#![warn(unused_crate_dependencies)]
+
 mod chain_hash;
 pub mod decoder;
 mod graph_database;
@@ -11,7 +13,7 @@ use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
     Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
-pub use crate::lnurl::resolve_lnurl;
+pub use crate::lnurl::{resolve_lnurl, Event};
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
