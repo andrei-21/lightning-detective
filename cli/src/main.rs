@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
-use detective::{resolve_lnurl, Description, InvoiceDetails};
+use detective::{resolve_bip353, resolve_lnurl, Description, InvoiceDetails};
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
 use tokio::sync::mpsc;
@@ -50,6 +50,11 @@ async fn main() -> Result<()> {
         }
         DecodedData::Bip21(address, params) => {
             print_bip21(address, params);
+        }
+        DecodedData::Bip353(name) => {
+            let result = resolve_bip353(&name).await?;
+            println!("DNS resolves to: {}", result.bip21);
+            println!("          proof: {}", result.proof);
         }
     };
     Ok(())

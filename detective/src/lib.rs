@@ -1,5 +1,6 @@
 #![warn(unused_crate_dependencies)]
 
+mod bip353;
 mod chain_hash;
 pub mod decoder;
 mod graph_database;
@@ -9,6 +10,7 @@ mod node;
 pub mod offer_details;
 mod recipient;
 
+pub use crate::bip353::{resolve_bip353, Bip353Result};
 use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
     Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,

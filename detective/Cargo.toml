@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.79"
 bitcoin = { version = "0.32.2", default-features = false, features = ["std", "rand-std"] }
+bitcoin-payment-instructions = "0.5.0"
 chrono = "0.4.38"
 iso_currency = "0.5.1"
 lightning = { version = "0.1.5", default-features = false, features = ["std"] }

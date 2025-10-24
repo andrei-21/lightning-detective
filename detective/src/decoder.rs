@@ -1,4 +1,5 @@
 use anyhow::{anyhow, bail, Error, Result};
+use bitcoin_payment_instructions::hrn_resolution::HumanReadableName;
 use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
 use lightning_invoice::Bolt11Invoice;
@@ -15,6 +16,7 @@ pub enum DecodedData {
     LightningAddress(LightningAddress),
     LnUrl(LnUrl),
     Bip21(String, Vec<Bip21Param>),
+    Bip353(HumanReadableName),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -29,6 +31,11 @@ pub fn decode(input: &str) -> Result<DecodedData> {
         .collect();
 
     let decoded_data = if input.contains('@') {
+        match HumanReadableName::from_encoded(input) {
+            Ok(name) => return Ok(DecodedData::Bip353(name)),
+            Err(()) => println!("Not a BIP-353 name"),
+        };
+
         println!("Decoding as a lightning address");
         let address = LightningAddress::from_str(input)?;
         DecodedData::LightningAddress(address)
