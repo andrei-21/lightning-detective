@@ -6,9 +6,9 @@ use axum::extract::{Form, Query};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
-use detective::decoder::DecodedData;
+use detective::decoder::{parse_bip21, DecodedData};
 use detective::offer_details::OfferDetails;
-use detective::InvoiceDetails;
+use detective::{resolve_bip353, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use templates::InvoiceTemplate;
@@ -17,7 +17,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 mod templates;
 
-use crate::templates::{ErrorTemplate, IndexTemplate, OfferTemplate};
+use crate::templates::{Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate};
 
 #[tokio::main]
 async fn main() {
@@ -47,7 +47,7 @@ struct IndexQuery {
 async fn index(Query(params): Query<IndexQuery>) -> Html<String> {
     let template = match params.r {
         Some(request) => {
-            let result = Safe(parse0(&request));
+            let result = Safe(parse0(&request).await);
             IndexTemplate { request, result }
         }
         None => IndexTemplate {
@@ -64,10 +64,10 @@ struct Input {
 }
 
 async fn parse(Form(input): Form<Input>) -> Html<String> {
-    Html(parse0(&input.text))
+    Html(parse0(&input.text).await)
 }
 
-fn parse0(input: &str) -> String {
+async fn parse0(input: &str) -> String {
     let result = match detective::decoder::decode(input) {
         Ok(result) => result,
         Err(err) => return ErrorTemplate { err }.render().unwrap(),
@@ -84,6 +84,17 @@ fn parse0(input: &str) -> String {
             let invoice = InvoiceDetails::from(&invoice);
             let invoice_template = InvoiceTemplate { invoice, findings };
             invoice_template.render().unwrap()
+        }
+        DecodedData::Bip353(hrn) => {
+            let result = resolve_bip353(&hrn).await.unwrap();
+            let (address, params) = parse_bip21(&result.bip21).unwrap();
+            let template = Bip353Template {
+                hrn: (hrn.user().to_string(), hrn.domain().to_string()),
+                result,
+                address,
+                params,
+            };
+            template.render().unwrap()
         }
         _ => panic!(),
     }

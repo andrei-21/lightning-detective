@@ -2,7 +2,7 @@ use anyhow::{bail, Error, Result};
 use bitcoin::hex::DisplayHex;
 use bitcoin_payment_instructions::dns_resolver::DNSHrnResolver;
 use bitcoin_payment_instructions::hrn_resolution::{HrnResolution, HrnResolver, HumanReadableName};
-use std::net::{Ipv4Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 pub struct Bip353Result {
     pub bip21: String,
@@ -10,7 +10,7 @@ pub struct Bip353Result {
 }
 
 pub async fn resolve_bip353(name: &HumanReadableName) -> Result<Bip353Result> {
-    let addr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53);
+    let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)), 53);
     let resolver = DNSHrnResolver(addr);
     let result = resolver.resolve_hrn(name).await.map_err(Error::msg)?;
     match result {

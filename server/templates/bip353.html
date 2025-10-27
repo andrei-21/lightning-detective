@@ -1,0 +1,26 @@
+<article>
+  <header>
+	<div class="parent">
+	  <div class="div1">
+		The payment request is a <b>BIP-353 DNS Payment Instructions</b>
+	  </div>
+	  <div class="div2"><button class="share outline">Share</button></div>
+	</div>
+  </header>
+  <h5>🌐 Resolving <code>{{ hrn.0 }}@{{ hrn.1 }}</code></h5>
+  <p>
+	Resolving <code>TXT</code> records of
+	<code>
+	  <abbr title="Username part">{{ hrn.0 }}</abbr>.user._bitcoin-payment.<abbr title="Domain part">{{ hrn.1 }}</abbr>
+	</code>
+  </p>
+
+  <h5>📦 Payload</h5>
+  <p> {{ result.bip21 | hex }} </p>
+
+  <h5>☑️ Proof</h5>
+  <details>
+	<summary role="button" class="outline"> {{ result.proof | truncate(16) }} View full</summary>
+	<p> {{ result.proof | hex }} </p>
+  </details>
+</article>

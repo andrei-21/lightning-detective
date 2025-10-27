@@ -2,10 +2,11 @@ use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
 use build_html::{Html, HtmlElement, HtmlTag};
+use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node, RecipientNode,
-    RouteHintDetails,
+    Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node,
+    RecipientNode, RouteHintDetails,
 };
 
 #[derive(Template)]
@@ -46,6 +47,15 @@ pub struct RouteHintsTemplate<'a> {
     pub route: &'a RouteHintDetails,
 }
 
+#[derive(Template)]
+#[template(path = "bip353.html")]
+pub struct Bip353Template {
+    pub hrn: (String, String),
+    pub result: Bip353Result,
+    pub address: Option<String>,
+    pub params: Vec<Bip21Param>,
+}
+
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
     let result = match flag {
         FeatureFlag::Required => HtmlElement::new(HtmlTag::Mark)
@@ -80,6 +90,15 @@ pub fn mute(message: &str) -> Safe<String> {
             .with_child(message.into())
             .to_html_string(),
     )
+}
+
+pub fn investigate_link(payload: &String) -> Safe<String> {
+	Safe(
+		HtmlElement::new(HtmlTag::Link)
+			.with_attribute("href", format!("/?r={payload}#result"))
+			.with_child("Investigate further".into())
+			.to_html_string(),
+	)
 }
 
 pub fn external_link(link: &str, title: &str) -> Safe<String> {

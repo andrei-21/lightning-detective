@@ -15,7 +15,7 @@ pub enum DecodedData {
     Refund(Refund),
     LightningAddress(LightningAddress),
     LnUrl(LnUrl),
-    Bip21(String, Vec<Bip21Param>),
+    Bip21(Option<String>, Vec<Bip21Param>),
     Bip353(HumanReadableName),
 }
 
@@ -83,7 +83,7 @@ pub enum Bip21Param {
     Unknown(String, String),
 }
 
-fn parse_bip21(uri: &str) -> Result<(String, Vec<Bip21Param>)> {
+pub fn parse_bip21(uri: &str) -> Result<(Option<String>, Vec<Bip21Param>)> {
     // TODO: Strip prefix ignore case.
     let uri = uri
         .strip_prefix("bitcoin:")
@@ -101,7 +101,13 @@ fn parse_bip21(uri: &str) -> Result<(String, Vec<Bip21Param>)> {
         )?,
     };
 
-    Ok((address.to_string(), params))
+    let address = if address.is_empty() {
+        None
+    } else {
+        Some(address.to_string())
+    };
+
+    Ok((address, params))
 }
 
 impl TryFrom<(&str, &str)> for Bip21Param {

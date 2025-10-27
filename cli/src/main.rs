@@ -159,9 +159,10 @@ fn print_invoice_details(invoice: InvoiceDetails) {
     println!();
 }
 
-fn print_bip21(address: String, mut params: Vec<Bip21Param>) {
+fn print_bip21(address: Option<String>, mut params: Vec<Bip21Param>) {
     println!("📋 {}", " BIP 21 ".reversed());
-    println!("On-chain address: {address}");
+
+    println!("On-chain address: {}", format_option(&address));
     params.sort();
     for param in params {
         match param {
