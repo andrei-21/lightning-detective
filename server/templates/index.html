@@ -523,18 +523,58 @@
 	      function wireShareButton(){
 	          if(!result) return;
 	          var btn = result.querySelector('button.share');
-	          if(!btn || btn.dataset.clipboardWired === 'true') return;
-	          btn.dataset.clipboardWired = 'true';
-	          btn.addEventListener('click', function(){
+	          if(!btn || btn.dataset.shareWired === 'true') return;
+	          btn.dataset.shareWired = 'true';
+	          btn.addEventListener('click', async function(){
+	              if(typeof window === 'undefined' || typeof navigator === 'undefined') return;
 	              var originalLabel = btn.textContent;
-	              copyToClipboard(window.location.href).then(function(success){
-	                  if(success){
+	              var shareUrl = window.location.href;
+	              var shareData = {
+	                  title: document.title || 'Lightning Detective',
+	                  text: 'Investigate this payment instruction.',
+	                  url: shareUrl
+	              };
+	              async function fallbackCopy(){
+	                  var copied = await copyToClipboard(shareUrl);
+	                  if(copied){
 	                      btn.textContent = 'Copied!';
 	                      setTimeout(function(){
 	                          btn.textContent = originalLabel;
 	                      }, 2000);
+	                  } else {
+	                      btn.textContent = originalLabel;
 	                  }
-	              });
+	              }
+	              btn.disabled = true;
+	              try {
+	                  var shareSupported = typeof navigator.share === 'function';
+	                  if(shareSupported && typeof navigator.canShare === 'function'){
+	                      try {
+	                          shareSupported = navigator.canShare({ url: shareUrl });
+	                      } catch (err) {
+	                          console.error('navigator.canShare threw', err);
+	                          shareSupported = false;
+	                      }
+	                  }
+	                  if(shareSupported){
+	                      await navigator.share(shareData);
+	                      btn.textContent = 'Shared!';
+	                      setTimeout(function(){
+	                          btn.textContent = originalLabel;
+	                      }, 2000);
+	                      return;
+	                  }
+	                  await fallbackCopy();
+	              } catch (err) {
+	                  if(err && err.name === 'AbortError'){
+	                      btn.textContent = originalLabel;
+	                  } else {
+	                      console.error('Web Share failed, falling back to clipboard', err);
+	                      await fallbackCopy();
+	                  }
+	              } finally {
+	                  btn.disabled = false;
+	              }
 	          });
 	      }
 
