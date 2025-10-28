@@ -44,18 +44,18 @@
 		  Introduction node:
 		  {% match path.introduction_node %}
 		  {% when IntroductionNode::NodeId with (pubkey) %}
-		  {{ pubkey | hex }}
+		  {{ pubkey | hex }} <br>
 		  {% when IntroductionNode::LeftEnd with (channel) %}
-		  <b>Left</b> end of <code> {{ channel }} </code><br>
+		  <b>Left</b> end of <code> {{ channel }} </code> <br>
 		  {% when IntroductionNode::RightEnd with (channel) %}
-		  <b>Right</b> end of <code> {{ channel }} </code><br>
+		  <b>Right</b> end of <code> {{ channel }} </code> <br>
 		  {% endmatch %}
 		  Blinding point: {{ path.blinding_point | hex }}
 		  <hr />
 		  <ol start="0">
 			{% for hop in path.hops %}
 			<li>
-			  Node id: {{ hop.node_id | hex }}
+			  Node id: {{ hop.node_id | hex }} <br>
 			  With encrypted payload: {{ hop.encrypted_payload | hex }}
 			</li>
 			{% endfor %}

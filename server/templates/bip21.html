@@ -16,6 +16,7 @@
 		  {{ address | or_empty_hex }}
 		  {% match address %}
 		  {% when Some with (address) %}
+		  <br>
 		  {{ self::investigate_link(address) }}
 		  {% when None %}
 		  {% endmatch %}
@@ -36,15 +37,15 @@
 
 		{% when Bip21Param::Lightning with (invoice) %}
 		<th scope="row"> BOLT-11 Invoice </th>
-		<td> {{ invoice | hex }} {{ self::investigate_link(invoice) }} </td>
+		<td> {{ invoice | hex }} <br> {{ self::investigate_link(invoice) }} </td>
 
 		{% when Bip21Param::Offer with (offer) %}
 		<th scope="row"> BOLT-12 Offer </th>
-		<td> {{ offer | hex }} {{ self::investigate_link(offer) }} </td>
+		<td> {{ offer | hex }} <br> {{ self::investigate_link(offer) }} </td>
 
 		{% when Bip21Param::SilentPayment with (sp) %}
 		<th scope="row"> Silent payment address </th>
-		<td> {{ sp | hex }} {{ self::investigate_link(sp) }} </td>
+		<td> {{ sp | hex }} <br> {{ self::investigate_link(sp) }} </td>
 
 		{% when Bip21Param::PayjoinEndpoint with (endpoint) %}
 		<th scope="row"> Payjoin endpoint </th>

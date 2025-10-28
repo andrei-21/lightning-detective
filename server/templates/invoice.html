@@ -60,7 +60,7 @@
 		  {% when Description::Direct with (description) %}
 		  {{ description }}
 		  {% when Description::Hash with (hash) %}
-		  {{ hash | hex}}
+		  {{ hash | hex}} <br>
 		  {{ self::mute("description hash was provided") }}
 		  {% endmatch %}
 		</td>
@@ -83,6 +83,7 @@
 		<td>
 		  {{ invoice.payee_pub_key | hex }}
 		  {% if invoice.payee_pub_key_recovered %}
+		  <br>
 		  {{ self::mute("the pubkey was recovered from the invoice signature") }}
 		  {% endif %}
 		</td>
