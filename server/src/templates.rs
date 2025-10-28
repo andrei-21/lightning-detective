@@ -6,7 +6,7 @@ use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node,
-    RecipientNode, RouteHintDetails,
+    RecipientNode,
 };
 
 #[derive(Template)]
@@ -36,28 +36,10 @@ pub struct InvoiceTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "features.html")]
-pub struct FeaturesTemplate<'a> {
-    pub features: &'a Vec<(String, FeatureFlag)>,
-}
-
-#[derive(Template)]
-#[template(path = "routing_hints.html")]
-pub struct RouteHintsTemplate<'a> {
-    pub route: &'a RouteHintDetails,
-}
-
-#[derive(Template)]
-#[template(path = "bip21-table.html")]
-pub struct Bip21TableTemplate {
-    pub address: Option<String>,
-    pub params: Vec<Bip21Param>,
-}
-
-#[derive(Template)]
 #[template(path = "bip21.html")]
 pub struct Bip21Template {
-    pub bip21_table: Safe<String>,
+    pub address: Option<String>,
+    pub params: Vec<Bip21Param>,
 }
 
 #[derive(Template)]
@@ -65,7 +47,8 @@ pub struct Bip21Template {
 pub struct Bip353Template {
     pub hrn: (String, String),
     pub result: Bip353Result,
-    pub bip21_table: Safe<String>,
+    pub address: Option<String>,
+    pub params: Vec<Bip21Param>,
 }
 
 pub fn format_sat(sat: &u64) -> String {
@@ -88,18 +71,6 @@ pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
             .with_child("not supported".into()),
     };
     Safe(result.to_html_string())
-}
-
-pub fn format_features(features: &Option<Vec<(String, FeatureFlag)>>) -> Safe<String> {
-    let features = match features {
-        Some(features) => features,
-        None => return mute("empty"),
-    };
-    Safe(FeaturesTemplate { features }.render().unwrap())
-}
-
-pub fn format_routing_hints(route: &RouteHintDetails) -> Safe<String> {
-    Safe(RouteHintsTemplate { route }.render().unwrap())
 }
 
 pub fn mute(message: &str) -> Safe<String> {

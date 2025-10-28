@@ -1,5 +1,6 @@
 #![warn(unused_crate_dependencies)]
 
+use anyhow::{Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use axum::extract::{Form, Query};
@@ -11,18 +12,17 @@ use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
-use templates::{Bip21TableTemplate, InvoiceTemplate};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod templates;
 
 use crate::templates::{
-    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate,
+    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, InvoiceTemplate, OfferTemplate,
 };
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or("info".into()),
@@ -35,10 +35,11 @@ async fn main() {
         .route("/", get(index))
         .route("/api/parse", post(parse));
 
-    let addr: SocketAddr = "0.0.0.0:3000".parse().unwrap();
+    let addr: SocketAddr = "0.0.0.0:3000".parse().map_err(Error::msg)?;
     tracing::info!("Listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app).await?;
+    Ok(())
 }
 
 #[derive(Deserialize, Default)]
@@ -75,33 +76,29 @@ async fn parse0(input: &str) -> String {
         Err(err) => return ErrorTemplate { err }.render().unwrap(),
     };
     let detective = detective::InvoiceDetective::new().unwrap();
-    match result {
+    let result = match result {
         DecodedData::Offer(offer) => {
             let offer = OfferDetails::from(offer);
-            let offer_template = OfferTemplate { offer };
-            offer_template.render().unwrap()
+            OfferTemplate { offer }.render()
         }
         DecodedData::Invoice(invoice) => {
             let findings = detective.investigate_bolt11(&invoice).unwrap();
             let invoice = InvoiceDetails::from(&invoice);
-            let invoice_template = InvoiceTemplate { invoice, findings };
-            invoice_template.render().unwrap()
+            InvoiceTemplate { invoice, findings }.render()
         }
-        DecodedData::Bip21(address, params) => {
-            let bip21_table = Safe(Bip21TableTemplate { address, params }.render().unwrap());
-            Bip21Template { bip21_table }.render().unwrap()
-        }
+        DecodedData::Bip21(address, params) => Bip21Template { address, params }.render(),
         DecodedData::Bip353(hrn) => {
             let result = resolve_bip353(&hrn).await.unwrap();
             let (address, params) = parse_bip21(&result.bip21).unwrap();
-            let bip21_table = Safe(Bip21TableTemplate { address, params }.render().unwrap());
-            let template = Bip353Template {
+            Bip353Template {
                 hrn: (hrn.user().to_string(), hrn.domain().to_string()),
                 result,
-                bip21_table,
-            };
-            template.render().unwrap()
+                address,
+                params,
+            }
+            .render()
         }
         _ => panic!(),
-    }
+    };
+    result.unwrap()
 }

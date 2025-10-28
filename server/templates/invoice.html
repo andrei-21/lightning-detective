@@ -1,12 +1,6 @@
 <article>
-  <header>
-	<div class="parent">
-	  <div class="div1">
-		The payment request is a <b>BOLT-11 Invoice</b>
-	  </div>
-	  <div class="div2"><button class="share outline">Share</button></div>
-	</div>
-  </header>
+  {% set name = "BOLT-11 Invoice" %}
+  {% include "include/result-header.html" %}
 
   <h5>🔎 Investigative Findings</h5>
   <p>
@@ -100,7 +94,7 @@
 		  Route #{{ loop.index0 }}
 		</th>
 		<td>
-		  {{ self::format_routing_hints(route) }}
+		  {% include "include/routing-hints.html" %}
 		</td>
 	  </tr>
 	  {% endfor %}
@@ -112,7 +106,22 @@
 	  {% endif %}
 
 
-	  <tr><th scope="row"> Features </th><td> {{ self::format_features(invoice.features) }} </td></tr>
+	  <tr>
+		<th scope="row"> Features </th>
+		<td>
+		  {% match invoice.features %}
+		  {% when Some with (features) %}
+		  <div class="grid-like">
+			{% for feature in features %}
+			<span> {{ feature.0 }} </span>
+			<span> {{ self::format_feature_flag(feature.1) }} </span>
+			{% endfor %}
+		  </div>
+		  {% when None %}
+		  {{ self::mute("empty") }}
+		  {% endmatch %}
+		</td>
+	  </tr>
 
 	  {% if !invoice.fallback_addresses.is_empty() %}
 	  <tr>
@@ -122,7 +131,7 @@
 		</th>
 		<td>
 		  {% for address in invoice.fallback_addresses %}
-		  {{ address | hex }}
+		  {{ address | hex }}<br>
 		  {% endfor %}
 		</td>
 	  </tr>

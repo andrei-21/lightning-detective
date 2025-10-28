@@ -1,13 +1,5 @@
 <article>
-  <header>
-	<div class="parent">
-	  <div class="div1">
-		The payment request is a <b>BIP-21 URI Scheme</b>
-	  </div>
-	  <div class="div2"><button class="share outline">Share</button></div>
-	</div>
-  </header>
-
-  {{ bip21_table }}
-
+  {% set name = "BIP-21 URI Scheme" %}
+  {% include "include/result-header.html" %}
+  {% include "include/bip21-table.html" %}
 </article>
