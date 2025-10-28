@@ -1,7 +1,7 @@
 use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
-use build_html::{Html, HtmlElement, HtmlTag};
+use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
 use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
@@ -48,10 +48,16 @@ pub struct RouteHintsTemplate<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "bip21.html")]
-pub struct Bip21Template {
+#[template(path = "bip21-table.html")]
+pub struct Bip21TableTemplate {
     pub address: Option<String>,
     pub params: Vec<Bip21Param>,
+}
+
+#[derive(Template)]
+#[template(path = "bip21.html")]
+pub struct Bip21Template {
+    pub bip21_table: Safe<String>,
 }
 
 #[derive(Template)]
@@ -59,6 +65,7 @@ pub struct Bip21Template {
 pub struct Bip353Template {
     pub hrn: (String, String),
     pub result: Bip353Result,
+    pub bip21_table: Safe<String>,
 }
 
 pub fn format_sat(sat: &u64) -> String {
@@ -106,9 +113,8 @@ pub fn mute(message: &str) -> Safe<String> {
 
 pub fn investigate_link(payload: &String) -> Safe<String> {
     Safe(
-        HtmlElement::new(HtmlTag::Link)
-            .with_attribute("href", format!("/?r={payload}#result"))
-            .with_child("Investigate further".into())
+        HtmlElement::new(HtmlTag::Bold)
+            .with_link(format!("/?r={payload}#result"), "Investigate →")
             .to_html_string(),
     )
 }

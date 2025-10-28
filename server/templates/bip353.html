@@ -16,12 +16,15 @@
   </p>
 
   <h5>📦 Payload</h5>
-  <p> {{ result.bip21 | hex }} </p>
+  <p>{{ result.bip21 | hex }}</p>
 
   <h5>☑️ Proof</h5>
   <details>
 	<summary role="button" class="outline"> {{ result.proof | truncate(16) }} View full</summary>
-	<p> {{ result.proof | hex }} </p>
+	<p>{{ result.proof | hex }}</p>
   </details>
+
+  <h5>📋 BIP-21 URI Scheme Details</h5>
+  {{ bip21_table }}
 
 </article>

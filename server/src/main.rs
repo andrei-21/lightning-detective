@@ -6,18 +6,20 @@ use axum::extract::{Form, Query};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
-use detective::decoder::DecodedData;
+use detective::decoder::{parse_bip21, DecodedData};
 use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
-use templates::InvoiceTemplate;
+use templates::{Bip21TableTemplate, InvoiceTemplate};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
 mod templates;
 
-use crate::templates::{Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate, Bip21Template};
+use crate::templates::{
+    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate,
+};
 
 #[tokio::main]
 async fn main() {
@@ -86,14 +88,17 @@ async fn parse0(input: &str) -> String {
             invoice_template.render().unwrap()
         }
         DecodedData::Bip21(address, params) => {
-            let invoice_template = Bip21Template { address, params };
-            invoice_template.render().unwrap()
+            let bip21_table = Safe(Bip21TableTemplate { address, params }.render().unwrap());
+            Bip21Template { bip21_table }.render().unwrap()
         }
         DecodedData::Bip353(hrn) => {
             let result = resolve_bip353(&hrn).await.unwrap();
+            let (address, params) = parse_bip21(&result.bip21).unwrap();
+            let bip21_table = Safe(Bip21TableTemplate { address, params }.render().unwrap());
             let template = Bip353Template {
                 hrn: (hrn.user().to_string(), hrn.domain().to_string()),
                 result,
+                bip21_table,
             };
             template.render().unwrap()
         }

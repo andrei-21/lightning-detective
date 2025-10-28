@@ -8,61 +8,6 @@
 	</div>
   </header>
 
-  <table>
-	<tbody>
-	  <tr>
-		<th scope="row"> On-chain address </th>
-		<td>
-		  {{ address | or_empty_hex }}
-		  {% match address %}
-		  {% when Some with (address) %}
-		  <br>
-		  {{ self::investigate_link(address) }}
-		  {% when None %}
-		  {% endmatch %}
-		</td>
-	  </tr>
+  {{ bip21_table }}
 
-	  {% for param in params %}
-	  <tr>
-		{% match param %}
-		{% when Bip21Param::Amount with (sats) %}
-		<th scope="row"> Amount </th> <td> {{ self::format_sat(sats) }} </td>
-
-		{% when Bip21Param::Label with (label) %}
-		<th scope="row"> Label </th> <td> {{ label }} </td>
-
-		{% when Bip21Param::Message with (message) %}
-		<th scope="row"> Message </th> <td> {{ message }} </td>
-
-		{% when Bip21Param::Lightning with (invoice) %}
-		<th scope="row"> BOLT-11 Invoice </th>
-		<td> {{ invoice | hex }} <br> {{ self::investigate_link(invoice) }} </td>
-
-		{% when Bip21Param::Offer with (offer) %}
-		<th scope="row"> BOLT-12 Offer </th>
-		<td> {{ offer | hex }} <br> {{ self::investigate_link(offer) }} </td>
-
-		{% when Bip21Param::SilentPayment with (sp) %}
-		<th scope="row"> Silent payment address </th>
-		<td> {{ sp | hex }} <br> {{ self::investigate_link(sp) }} </td>
-
-		{% when Bip21Param::PayjoinEndpoint with (endpoint) %}
-		<th scope="row"> Payjoin endpoint </th>
-		<td> {{ endpoint | hex }} </td>
-
-		{% when Bip21Param:: PayjoinDisallowOutputSubstitution %}
-		<th scope="row"> Payjoin </th>
-		<td> Disallow output substitution </td>
-
-		{% when Bip21Param::Unknown with (key, value) %}
-		<th scope="row"> {{ key }} </th>
-		<td> {{ value }} </td>
-
-		{% endmatch %}
-	  </tr>
-	  {% endfor %}
-
-	</tbody>
-  </table>
 </article>
