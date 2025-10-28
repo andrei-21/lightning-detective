@@ -23,7 +23,7 @@
   </p>
 
   <h5>🗃️ Evidences</h5>
-  <p>
+  <div>
 	Pay to
 	{% if findings.payee.is_announced %}
 	public node <b>{{ self::explorer_link(findings.payee) }}</b>
@@ -32,21 +32,21 @@
 	private node <b>{{ findings.payee.pubkey | hex }}</b>
 
 	{% for route in findings.route_hints %}
-	{% for hop in route %}
-	via
 	<ol start="0">
+	  {% for hop in route %}
 	  <li>
+		via
 		{% if hop.is_announced %}
 		public node <b>{{ self::explorer_link(hop) }}</b>
 		{% else %}
 		private node <b>{{ hop.pubkey | hex }}</b>
 		{% endif %}
 	  </li>
+	  {% endfor %}
 	</ol>
 	{% endfor %}
-	{% endfor %}
 	{% endif %}
-  </p>
+  </div>
 
   <h5>📋 Details</h5>
   <table>
