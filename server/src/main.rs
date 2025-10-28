@@ -6,7 +6,7 @@ use axum::extract::{Form, Query};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
-use detective::decoder::{parse_bip21, DecodedData};
+use detective::decoder::DecodedData;
 use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, InvoiceDetails};
 use serde::Deserialize;
@@ -17,7 +17,7 @@ use tracing_subscriber::util::SubscriberInitExt;
 
 mod templates;
 
-use crate::templates::{Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate};
+use crate::templates::{Bip353Template, ErrorTemplate, IndexTemplate, OfferTemplate, Bip21Template};
 
 #[tokio::main]
 async fn main() {
@@ -85,14 +85,15 @@ async fn parse0(input: &str) -> String {
             let invoice_template = InvoiceTemplate { invoice, findings };
             invoice_template.render().unwrap()
         }
+        DecodedData::Bip21(address, params) => {
+            let invoice_template = Bip21Template { address, params };
+            invoice_template.render().unwrap()
+        }
         DecodedData::Bip353(hrn) => {
             let result = resolve_bip353(&hrn).await.unwrap();
-            let (address, params) = parse_bip21(&result.bip21).unwrap();
             let template = Bip353Template {
                 hrn: (hrn.user().to_string(), hrn.domain().to_string()),
                 result,
-                address,
-                params,
             };
             template.render().unwrap()
         }

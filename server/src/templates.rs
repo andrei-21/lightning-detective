@@ -48,12 +48,24 @@ pub struct RouteHintsTemplate<'a> {
 }
 
 #[derive(Template)]
+#[template(path = "bip21.html")]
+pub struct Bip21Template {
+    pub address: Option<String>,
+    pub params: Vec<Bip21Param>,
+}
+
+#[derive(Template)]
 #[template(path = "bip353.html")]
 pub struct Bip353Template {
     pub hrn: (String, String),
     pub result: Bip353Result,
-    pub address: Option<String>,
-    pub params: Vec<Bip21Param>,
+}
+
+pub fn format_sat(sat: &u64) -> String {
+    match sat {
+        1 => "1 sat".to_string(),
+        sat => format!("{} sats", sat),
+    }
 }
 
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
@@ -93,12 +105,12 @@ pub fn mute(message: &str) -> Safe<String> {
 }
 
 pub fn investigate_link(payload: &String) -> Safe<String> {
-	Safe(
-		HtmlElement::new(HtmlTag::Link)
-			.with_attribute("href", format!("/?r={payload}#result"))
-			.with_child("Investigate further".into())
-			.to_html_string(),
-	)
+    Safe(
+        HtmlElement::new(HtmlTag::Link)
+            .with_attribute("href", format!("/?r={payload}#result"))
+            .with_child("Investigate further".into())
+            .to_html_string(),
+    )
 }
 
 pub fn external_link(link: &str, title: &str) -> Safe<String> {
