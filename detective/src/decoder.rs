@@ -33,7 +33,7 @@ pub fn decode(input: &str) -> Result<DecodedData> {
     let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
     } else if lowercased.starts_with(BITCOIN_PREFIX) {
-        let (address, params) = parse_bip21(input).context("Failed to parse BIP-21")?;
+        let (address, params) = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
         DecodedData::Bip21(address, params)
     } else if input.starts_with('₿') {
         let hrn =
@@ -60,18 +60,18 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         DecodedData::LightningAddress(address)
     } else if input.starts_with("lno") {
         let offer = Offer::from_str(&filtered_input)
-            .map_err(|e| anyhow!("Failed to parse offer: {e:?}"))?;
+            .map_err(|e| anyhow!("Failed to parse BOLT-12 offer: {e:?}"))?;
         DecodedData::Offer(offer)
     } else if input.starts_with("lnr") {
         let refund = Refund::from_str(&filtered_input)
-            .map_err(|e| anyhow!("Failed to parse refund: {e:?}"))?;
+            .map_err(|e| anyhow!("Failed to parse BOLT-12 refund: {e:?}"))?;
         DecodedData::Refund(refund)
     } else if input.starts_with("lnurl") {
         let lnurl = LnUrl::from_str(input).context("Failed to parse LNURL")?;
         DecodedData::LnUrl(lnurl)
     } else if input.starts_with("ln") {
         let invoice = Bolt11Invoice::from_str(input)
-            .map_err(|e| anyhow!("Failed to parse invoice: {e:?}"))?;
+            .map_err(|e| anyhow!("Failed to parse BOLT-11 invoice: {e:?}"))?;
         DecodedData::Invoice(invoice)
     } else {
         bail!("Input is not recognized");
