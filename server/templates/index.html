@@ -86,6 +86,9 @@
 		  padding-bottom: calc(var(--block-spacing-vertical) * 0.5);
 		  margin-bottom: calc(var(--block-spacing-vertical) * 0.5);
 	  }
+	  code, pre {
+		  overflow-wrap: anywhere;
+	  }
 	  .code-value {
 		  overflow-wrap: anywhere;
 		  font-family: var(--font-stack-monospace, monospace);
@@ -159,6 +162,12 @@
 		  <h2>Examples</h2>
 		  <p>Sample payment instructions; paste one into the form to see how parsing works.</p>
 		</hgroup>
+
+		<h3>LNURL</h3>
+		<ul>
+		  <li><a href="/?r=lnurl1dp68gurn8ghj7ctsdyhxwetewdjhytnxw4hxgtmvde6hymp0wpshj0mswfhk5etrw3ykg0f3xqcs2mcx97#result">lnurl1dp68gurn8ghj7...</a></li>
+		  <li><a href="/?r=LNURL1DP68GURN8GHJ7MRWW4EXCTT5DAHKCCN00QHXGET8WFJK2UM0VEAX2UN09E3K7MF0W5LHZ0TPVC6RQENRXQMXXDFNXSCRYDE3V5UXXDNXVDNX2DNYXGURXER98QURWWP3XAJNZVPHVGCXYDPCVDJRSC3S8QUNWVF5XVUNSVF4XG6NGAKYX3T#result">LNURL1DP68GURN8GHJ...</a></li>
+		</ul>
 
 		<h3>BOLT-353 DNS Payment Instructions</h3>
 		<ul>

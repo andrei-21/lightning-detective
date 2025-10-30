@@ -10,7 +10,7 @@
   <div>{{ loop.index }}. Sending <code>{{ method }}</code> request to <code>{{ url }}</code></div>
 
   {% when Event::ResponseReceived with (status) %}
-  <div>{{ loop.index }}. Response received with status <code>{{ status }}</code></div>
+  <div>{{ loop.index }}. Response received with HTTP status <code>{{ status }}</code></div>
 
   {% when Event::ResponseBodyReceived with (body) %}
   <div>{{ loop.index }}. ... with body <code>{{ body }}</code></div>

@@ -112,7 +112,7 @@ async fn parse_impl(input: &str) -> Result<String> {
             .render()
         }
         DecodedData::LnUrl(lnurl) => {
-            let stream = resolve_lnurl(lnurl.url.clone());
+            let stream = resolve_lnurl(lnurl.clone());
             let events: Vec<Event> = stream.collect().await;
             LnurlTemplate { events }.render()
         }

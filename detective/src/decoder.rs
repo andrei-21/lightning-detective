@@ -1,10 +1,9 @@
-use anyhow::{anyhow, bail, ensure, Context, Result};
+use anyhow::{anyhow, bail, ensure, Context, Error, Result};
 use bitcoin_payment_instructions::hrn_resolution::HumanReadableName;
 use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
 use lightning_invoice::Bolt11Invoice;
-use lnurl::lightning_address::LightningAddress;
-use lnurl::lnurl::LnUrl;
+use reqwest::Url;
 use std::str::FromStr;
 
 const BITCOIN_PREFIX: &str = "bitcoin:";
@@ -15,7 +14,7 @@ pub enum DecodedData {
     Invoice(Bolt11Invoice),
     Offer(Offer),
     Refund(Refund),
-    LightningAddress(LightningAddress),
+    LightningAddress(LnUrl),
     LnUrl(LnUrl),
     Bip21(Option<String>, Vec<Bip21Param>),
     Bip353(HumanReadableName),
@@ -55,9 +54,21 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         .filter(|c| *c != '+' && !c.is_whitespace())
         .collect();
     let decoded_data = if input.contains('@') {
-        let address =
-            LightningAddress::from_str(input).context("Failed to parse lightning address")?;
-        DecodedData::LightningAddress(address)
+        let (username, domain) = input
+            .split_once('@')
+            .ok_or(anyhow!("Lightning address must have `@`"))?;
+        let is_username_valid = username
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_numeric() || ['-', '_', '.'].contains(&c));
+        // TODO: Support + in lightning addresses.
+        ensure!(is_username_valid, "Invalid Lightning address username");
+        ensure!(is_domain(domain), "Invalid Lightning address domain");
+        let url = format!("https://{domain}/.well-known/lnurlp/{username}");
+        let lnurl = LnUrl {
+            kind: LnUrlKind::Pay,
+            url,
+        };
+        DecodedData::LightningAddress(lnurl)
     } else if input.starts_with("lno") {
         let offer = Offer::from_str(&filtered_input)
             .map_err(|e| anyhow!("Failed to parse BOLT-12 offer: {e:?}"))?;
@@ -66,9 +77,20 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         let refund = Refund::from_str(&filtered_input)
             .map_err(|e| anyhow!("Failed to parse BOLT-12 refund: {e:?}"))?;
         DecodedData::Refund(refund)
-    } else if input.starts_with("lnurl") {
-        let lnurl = LnUrl::from_str(input).context("Failed to parse LNURL")?;
+    } else if input.starts_with("lnurlc")
+        || input.starts_with("lnurlp")
+        || input.starts_with("lnurlw")
+        || input.starts_with("keyauth")
+    {
+        let lnurl = LnUrl::from_str(input)?;
         DecodedData::LnUrl(lnurl)
+    } else if input.starts_with("lnurl") {
+        let lnurl = lnurl::lnurl::LnUrl::from_str(input).context("Failed to parse LNURL")?;
+        let kind = LnUrlKind::Unknown;
+        DecodedData::LnUrl(LnUrl {
+            kind,
+            url: lnurl.url,
+        })
     } else if input.starts_with("ln") {
         let invoice = Bolt11Invoice::from_str(input)
             .map_err(|e| anyhow!("Failed to parse BOLT-11 invoice: {e:?}"))?;
@@ -77,6 +99,61 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         bail!("Input is not recognized");
     };
     Ok(decoded_data)
+}
+
+fn is_domain(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 253
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'.')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && !s.starts_with('.')
+        && !s.ends_with('.')
+        && s.split('.').all(|l| !l.is_empty() && l.len() <= 63)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LnUrlKind {
+    Channel,
+    Pay,
+    Withdraw,
+    Login,
+    Unknown,
+}
+
+#[derive(Debug, Clone)]
+pub struct LnUrl {
+    pub kind: LnUrlKind,
+    pub url: String,
+}
+
+impl FromStr for LnUrl {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        let url = Url::parse(s)?;
+        let kind = match url.scheme() {
+            "lnurlc" => LnUrlKind::Channel,
+            "lnurlp" => LnUrlKind::Pay,
+            "lnurlw" => LnUrlKind::Withdraw,
+            "keyauth" => LnUrlKind::Login,
+            scheme => bail!("Invalid scheme `{scheme}` for LNURL LUD-17"),
+        };
+        let scheme = scheme_for(&url);
+        let (_scheme, tail) = s
+            .split_once(':')
+            .ok_or(anyhow!("Valid URL must have `:`"))?;
+        let url = format!("{scheme}:{tail}");
+        Ok(LnUrl { kind, url })
+    }
+}
+
+fn scheme_for(url: &Url) -> &'static str {
+    match url.domain() {
+        Some(domain) if domain.ends_with(".onion") => "http",
+        _ => "https",
+    }
 }
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
@@ -194,8 +271,8 @@ mod tests {
     #[test]
     fn decodes_lightning_address_with_scheme() {
         match decode("lightning:example@getalby.com").unwrap() {
-            DecodedData::LightningAddress(address) => {
-                assert_eq!(address.to_string(), "example@getalby.com");
+            DecodedData::LightningAddress(lnurl) => {
+                assert_eq!(lnurl.kind, LnUrlKind::Pay);
             }
             other => panic!("expected lightning address, got {other:?}"),
         }
@@ -204,10 +281,9 @@ mod tests {
     #[test]
     fn decodes_lnurl() {
         let lnurl = "lnurl1dp68gurn8ghj7mrww4exctnxd9shg6npvchxxmmd9akxuatjdskhqcte8aek2umnd9hku0fj89jxxct989jrgve3xvmk2erzxpjx2decxp3kxv33xqckve3c8qmxxd3cvvuxxepnv3nrwe3hxvukzwp3xsex2v3cxejxgcnrxgukguq0868";
-        let expected = LnUrl::from_str(lnurl).expect("expected valid LNURL");
 
         match decode(lnurl).unwrap() {
-            DecodedData::LnUrl(actual) => assert_eq!(actual, expected),
+            DecodedData::LnUrl(lnurl) => assert_eq!(lnurl.url, "https://lnurl.fiatjaf.com/lnurl-pay?session=29dcae9d43137edb0de780cc2101ff886c68c8cd3df7f739a8142e286ddbc29d"),
             other => panic!("expected LNURL, got {other:?}"),
         }
     }

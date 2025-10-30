@@ -8,6 +8,8 @@ use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
 
+use crate::decoder::{LnUrl, LnUrlKind};
+
 #[derive(Debug)]
 pub enum LnUrlResponseDetails {
     Pay(LnUrlPayDetails),
@@ -90,25 +92,28 @@ pub enum Event {
     Result(Result<LnUrlResponse>),
 }
 
-pub fn resolve_lnurl(url: String) -> impl Stream<Item = Event> {
+pub fn resolve_lnurl(lnurl: LnUrl) -> impl Stream<Item = Event> {
     let (tx, rx) = mpsc::channel(100);
     tokio::spawn(async move {
-        let result = resolve_lnurl_impl(url, tx.clone()).await;
+        let result = resolve_lnurl_impl(lnurl, tx.clone()).await;
         let _ = tx.send(Event::Result(result)).await;
     });
     ReceiverStream::new(rx)
 }
 
-pub async fn resolve_lnurl_impl(url: String, events: mpsc::Sender<Event>) -> Result<LnUrlResponse> {
+pub async fn resolve_lnurl_impl(
+    lnurl: LnUrl,
+    events: mpsc::Sender<Event>,
+) -> Result<LnUrlResponse> {
     let method = Method::GET;
     events
-        .send(Event::Requesting(method.clone(), url.clone()))
+        .send(Event::Requesting(method.clone(), lnurl.url.clone()))
         .await?;
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
         .build()?;
 
-    let response = client.request(method, url).send().await?;
+    let response = client.request(method, lnurl.url).send().await?;
     let status = response.status();
     events.send(Event::ResponseReceived(status)).await?;
 
@@ -117,11 +122,21 @@ pub async fn resolve_lnurl_impl(url: String, events: mpsc::Sender<Event>) -> Res
         .send(Event::ResponseBodyReceived(body.clone()))
         .await?;
 
-    ensure!(status.is_success(), "Status is not success");
+    ensure!(status.is_success(), "HTTP status is not success");
     let json: Value = serde_json::from_str(&body)?;
     events.send(Event::JsonParsed(json.clone())).await?;
 
-    decode_ln_url_response_from_json(json).map_err(Error::from)
+    let response = decode_ln_url_response_from_json(json).map_err(Error::from)?;
+
+    if let Some(expected) = expected_response_kind(&lnurl.kind) {
+        let actual = response_kind(&response);
+        ensure!(
+            actual == expected,
+            "LNURL kind mismatch: expected {expected:?}, got {actual:?}"
+        );
+    }
+
+    Ok(response)
 
     // let symbol = if pay.callback.contains('?') { '&' } else { '?' };
     // let url = format!("{}{symbol}amount={}", pay.callback, pay.min_sendable);
@@ -138,4 +153,22 @@ pub async fn resolve_lnurl_impl(url: String, events: mpsc::Sender<Event>) -> Res
     // let invoice_response: LnURLPayInvoice = serde_json::from_value(json)?;
     // println!("OK");
     // Ok(invoice_response.pr)
+}
+
+fn response_kind(response: &LnUrlResponse) -> LnUrlKind {
+    match response {
+        LnUrlResponse::LnUrlPayResponse(_) => LnUrlKind::Pay,
+        LnUrlResponse::LnUrlWithdrawResponse(_) => LnUrlKind::Withdraw,
+        LnUrlResponse::LnUrlChannelResponse(_) => LnUrlKind::Channel,
+    }
+}
+
+fn expected_response_kind(kind: &LnUrlKind) -> Option<LnUrlKind> {
+    match kind {
+        LnUrlKind::Pay => Some(LnUrlKind::Pay),
+        LnUrlKind::Withdraw => Some(LnUrlKind::Withdraw),
+        LnUrlKind::Channel => Some(LnUrlKind::Channel),
+        LnUrlKind::Login => Some(LnUrlKind::Login),
+        LnUrlKind::Unknown => None,
+    }
 }

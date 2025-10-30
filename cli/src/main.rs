@@ -34,14 +34,14 @@ async fn main() -> Result<()> {
         }
         DecodedData::LnUrl(lnurl) => {
             println!("{lnurl:?}");
-            let mut events = resolve_lnurl(lnurl.url);
+            let mut events = resolve_lnurl(lnurl);
             while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
         }
-        DecodedData::LightningAddress(address) => {
-            println!("{address:?}");
-            let mut events = resolve_lnurl(address.lnurl().url);
+        DecodedData::LightningAddress(lnurl) => {
+            println!("{lnurl:?}");
+            let mut events = resolve_lnurl(lnurl);
             while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
