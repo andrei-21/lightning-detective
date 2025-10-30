@@ -7,7 +7,7 @@ use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{resolve_bip353, resolve_lnurl, Description, InvoiceDetails};
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
-use tokio::sync::mpsc;
+use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -34,17 +34,15 @@ async fn main() -> Result<()> {
         }
         DecodedData::LnUrl(lnurl) => {
             println!("{lnurl:?}");
-            let (tx, mut rx) = mpsc::channel(100);
-            tokio::spawn(resolve_lnurl(lnurl, tx));
-            while let Some(event) = rx.recv().await {
+            let mut events = resolve_lnurl(lnurl.url);
+            while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
         }
         DecodedData::LightningAddress(address) => {
             println!("{address:?}");
-            let (tx, mut rx) = mpsc::channel(100);
-            tokio::spawn(resolve_lnurl(address.lnurl(), tx));
-            while let Some(event) = rx.recv().await {
+            let mut events = resolve_lnurl(address.lnurl().url);
+            while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
         }

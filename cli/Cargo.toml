@@ -10,3 +10,4 @@ anyhow = "1.0.79"
 colored = "2.1.0"
 detective = { path = "../detective" }
 tokio = { version = "1.36.0", features = ["rt", "macros"] }
+tokio-stream = "0.1.15"

@@ -15,7 +15,7 @@ use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
     Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
-pub use crate::lnurl::{resolve_lnurl, Event};
+pub use crate::lnurl::{resolve_lnurl, Event, LnUrlPayDetails, LnUrlResponseDetails};
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};

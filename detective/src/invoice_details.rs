@@ -136,7 +136,7 @@ fn to_features(features: String) -> Vec<(String, FeatureFlag)> {
             "required" => FeatureFlag::Required,
             "supported" => FeatureFlag::Supported,
             "not supported" => FeatureFlag::NotSupported,
-            _ => panic!(),
+            flag => panic!("Unsupported {flag}"),
         };
         result.push((feature.to_string(), flag));
     }

@@ -9,9 +9,11 @@ use axum::routing::{get, post};
 use axum::Router;
 use detective::decoder::{parse_bip21, DecodedData};
 use detective::offer_details::OfferDetails;
-use detective::{resolve_bip353, InvoiceDetails};
+use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
+use templates::LnurlTemplate;
+use tokio_stream::StreamExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -108,6 +110,11 @@ async fn parse_impl(input: &str) -> Result<String> {
                 params,
             }
             .render()
+        }
+        DecodedData::LnUrl(lnurl) => {
+            let stream = resolve_lnurl(lnurl.url.clone());
+            let events: Vec<Event> = stream.collect().await;
+            LnurlTemplate { events }.render()
         }
         other => bail!("Unsupported decoded data: {other:?}"),
     }

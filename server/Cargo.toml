@@ -10,6 +10,8 @@ axum = { version = "0.7", features = ["json"] }
 build_html = "2.7.0"
 detective = { path = "../detective" }
 serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1.0.145", features = ["std"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio-stream = "0.1.17"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }

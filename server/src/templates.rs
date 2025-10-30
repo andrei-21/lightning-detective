@@ -5,8 +5,8 @@ use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
 use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, Node,
-    RecipientNode,
+    Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
+    LnUrlResponseDetails, Node, RecipientNode,
 };
 
 #[derive(Template)]
@@ -49,6 +49,12 @@ pub struct Bip353Template {
     pub result: Bip353Result,
     pub address: Option<String>,
     pub params: Vec<Bip21Param>,
+}
+
+#[derive(Template)]
+#[template(path = "lnurl.html")]
+pub struct LnurlTemplate {
+    pub events: Vec<Event>,
 }
 
 pub fn format_sat(sat: &u64) -> String {
@@ -112,6 +118,7 @@ pub mod filters {
     use askama::filters::{MaybeSafe, Safe};
     use askama::{Result, Values};
     use build_html::{Html, HtmlElement, HtmlTag};
+    use serde_json::Value;
 
     pub fn or_empty<T: std::fmt::Display>(
         s: &Option<T>,
@@ -141,5 +148,9 @@ pub mod filters {
                 .with_child(s.to_string().into())
                 .to_html_string(),
         ))
+    }
+
+    pub fn json_pretty(value: &Value, _: &dyn Values) -> Result<String> {
+        Ok(serde_json::to_string_pretty(value).expect("serializing Value to JSON never fails"))
     }
 }
