@@ -57,6 +57,14 @@ pub struct LnurlTemplate {
     pub events: Vec<Event>,
 }
 
+#[derive(Template)]
+#[template(path = "lightning-address.html")]
+pub struct LightningAddressTemplate {
+    pub username: String,
+    pub domain: String,
+    pub events: Vec<Event>,
+}
+
 pub fn format_sat(sat: &u64) -> String {
     match sat {
         1 => "1 sat".to_string(),

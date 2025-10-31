@@ -109,6 +109,7 @@ pub async fn resolve_lnurl_impl(
     events
         .send(Event::Requesting(method.clone(), lnurl.url.clone()))
         .await?;
+
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
         .build()?;

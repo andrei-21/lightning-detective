@@ -39,8 +39,8 @@ async fn main() -> Result<()> {
                 println!("{event:?}");
             }
         }
-        DecodedData::LightningAddress(lnurl) => {
-            println!("{lnurl:?}");
+        DecodedData::LightningAddress((username, domain), lnurl) => {
+            println!("Lightning address of {username} at {domain}");
             let mut events = resolve_lnurl(lnurl);
             while let Some(event) = events.next().await {
                 println!("{event:?}");

@@ -2,56 +2,5 @@
   {% set name = "LNURL " %}
   {% include "include/result-header.html" %}
 
-  <h5>🌐 Resolving</h5>
-
-  {% for event in events %}
-  {% match event %}
-  {% when Event::Requesting with (method, url) %}
-  <div>{{ loop.index }}. Sending <code>{{ method }}</code> request to <code>{{ url }}</code></div>
-
-  {% when Event::ResponseReceived with (status) %}
-  <div>{{ loop.index }}. Response received with HTTP status <code>{{ status }}</code></div>
-
-  {% when Event::ResponseBodyReceived with (body) %}
-  <div>{{ loop.index }}. ... with body <code>{{ body }}</code></div>
-
-  {% when Event::JsonParsed with (json) %}
-  <div>{{ loop.index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
-
-  {% when Event::Result(Ok(response)) %}
-  {% set response_details = LnUrlResponseDetails::from(*response) %}
-  <h5>📋 LNURL Pay Response Details</h5>
-  <table>
-	<tbody>
-	  {% match response_details %}
-
-	  {% when LnUrlResponseDetails::Pay with (details) %}
-	  <tr><th scope="row"> Callback </th><td> {{ details.callback | hex }} </td></tr>
-	  <tr><th scope="row"> Sendable amount </th><td> {{ details.sendable_amount }} </td></tr>
-	  <tr><th scope="row"> Metadata </th><td> {{ details.metadata }} </td></tr>
-	  <tr><th scope="row"> Comment allowed </th><td> {{ details.comment_allowed | or_empty }} </td></tr>
-
-	  {% match details.allows_nostr %}
-	  {% when Some(true) %}
-	  <tr><th scope="row"> Allows nostr </th><td> yes </td></tr>
-	  {% when Some(false) %}
-	  <tr><th scope="row"> Allows nostr </th><td> no </td></tr>
-	  {% when None %}
-	  {% endmatch %}
-
-	  {% match details.nostr_pubkey %}
-	  {% when Some(pubkey) %}
-	  <tr><th scope="row"> Nostr pubkey </th><td> {{ pubkey | hex }} </td></tr>
-	  {% when None %}
-	  {% endmatch %}
-	  {% endmatch %}
-
-	</tbody>
-  </table>
-
-  {% when Event::Result(Err(err)) %}
-  {% include "error.html" %}
-
-  {% endmatch %}
-  {% endfor %}
+  {% include "include/lnurl-details.html" %}
 </article>

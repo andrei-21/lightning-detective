@@ -2,12 +2,23 @@
   {% set name = "BIP-353 DNS Payment Instruction" %}
   {% include "include/result-header.html" %}
 
-  <h5>🌐 Resolving <code>{{ hrn.0 }}@{{ hrn.1 }}</code></h5>
-  <p>
-	Resolving <code>TXT</code> records of
+  <h5>🔄 Translating</h5>
+  <div align="center">
 	<code>
-	  <abbr title="Username part">{{ hrn.0 }}</abbr>.user._bitcoin-payment.<abbr title="Domain part">{{ hrn.1 }}</abbr>
+	  ₿<mark class="badge-supported">{{ hrn.0 }}</mark>@<mark class="badge-required">{{ hrn.1}}</mark>
 	</code>
+	<br>
+	↓
+	<br>
+	<code>
+	  <mark class="badge-supported">{{ hrn.0 }}</mark>.user._bitcoin-payment.<mark class="badge-required">{{ hrn.1 }}</mark>
+	</code>
+  </div>
+  <p></p>
+
+  <h5>🌐 Resolving</h5>
+  <p>
+	Resolving <code>TXT</code> records of <code>{{ hrn.0 }}.user._bitcoin-payment.{{ hrn.1 }}</code>
   </p>
 
   <h5>📦 Payload</h5>

@@ -14,7 +14,7 @@ pub enum DecodedData {
     Invoice(Bolt11Invoice),
     Offer(Offer),
     Refund(Refund),
-    LightningAddress(LnUrl),
+    LightningAddress((String, String), LnUrl),
     LnUrl(LnUrl),
     Bip21(Option<String>, Vec<Bip21Param>),
     Bip353(HumanReadableName),
@@ -27,7 +27,6 @@ pub fn decode(input: &str) -> Result<DecodedData> {
     // TODO: Decode on-chain addresses.
     // TODO: Decode BIP 72.
     // TODO: Decode xpub, xpriv.
-    // TODO: Support LUD-17: Protocol schemes and raw (non bech32-encoded) URLs.
 
     let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
@@ -63,12 +62,8 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         // TODO: Support + in lightning addresses.
         ensure!(is_username_valid, "Invalid Lightning address username");
         ensure!(is_domain(domain), "Invalid Lightning address domain");
-        let url = format!("https://{domain}/.well-known/lnurlp/{username}");
-        let lnurl = LnUrl {
-            kind: LnUrlKind::Pay,
-            url,
-        };
-        DecodedData::LightningAddress(lnurl)
+        let lnurl = LnUrl::from_str(&format!("lnurlp://{domain}/.well-known/lnurlp/{username}"))?;
+        DecodedData::LightningAddress((username.to_string(), domain.to_string()), lnurl)
     } else if input.starts_with("lno") {
         let offer = Offer::from_str(&filtered_input)
             .map_err(|e| anyhow!("Failed to parse BOLT-12 offer: {e:?}"))?;
@@ -271,7 +266,9 @@ mod tests {
     #[test]
     fn decodes_lightning_address_with_scheme() {
         match decode("lightning:example@getalby.com").unwrap() {
-            DecodedData::LightningAddress(lnurl) => {
+            DecodedData::LightningAddress((username, domain), lnurl) => {
+                assert_eq!(username, "example");
+                assert_eq!(domain, "getalby.com");
                 assert_eq!(lnurl.kind, LnUrlKind::Pay);
             }
             other => panic!("expected lightning address, got {other:?}"),

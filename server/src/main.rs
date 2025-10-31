@@ -1,6 +1,6 @@
 #![warn(unused_crate_dependencies)]
 
-use anyhow::{bail, Context, Error, Result};
+use anyhow::{anyhow, Context, Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use axum::extract::{Form, Query};
@@ -12,7 +12,6 @@ use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
-use templates::LnurlTemplate;
 use tokio_stream::StreamExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -20,7 +19,8 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod templates;
 
 use crate::templates::{
-    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, InvoiceTemplate, OfferTemplate,
+    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, InvoiceTemplate,
+    LightningAddressTemplate, LnurlTemplate, OfferTemplate,
 };
 
 #[tokio::main]
@@ -116,7 +116,21 @@ async fn parse_impl(input: &str) -> Result<String> {
             let events: Vec<Event> = stream.collect().await;
             LnurlTemplate { events }.render()
         }
-        other => bail!("Unsupported decoded data: {other:?}"),
+        DecodedData::LightningAddress((username, domain), lnurl) => {
+            let stream = resolve_lnurl(lnurl.clone());
+            let events: Vec<Event> = stream.collect().await;
+            LightningAddressTemplate {
+                username,
+                domain,
+                events,
+            }
+            .render()
+        }
+        DecodedData::Refund(_refund) => {
+            return Ok(render_error(anyhow!(
+                "BOLT-12 Refund is not yet implemented"
+            )));
+        }
     }
     .map_err(Error::new)
 }

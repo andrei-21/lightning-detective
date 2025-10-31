@@ -65,7 +65,7 @@
 		<td>
 		  {{ invoice.expiry }}
 		  {% if invoice.has_expired %}
-		  <mark><abbr title="The invoice has already expired">expired</abbr></mark>
+		  <mark data-tooltip="The invoice has already expired">expired</mark>
 		  {% endif %}
 		</td>
 	  </tr>
@@ -127,7 +127,8 @@
 	  <tr>
 		<th scope="row">
 		  Fallbacks
-		  <mark><abbr title="Fallback addresses might be deprecated in the near future in favor of using BIP-21 or BIP-353">deprecated</abbr></mark>
+		  <mark data-tooltip="Fallback addresses might be deprecated in the near
+							  future in favor of using BIP-21 or BIP-353">deprecated</mark>
 		</th>
 		<td>
 		  {% for address in invoice.fallback_addresses %}
