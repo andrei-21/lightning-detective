@@ -7,6 +7,7 @@ pub enum ServiceKind {
     ConsumerWallet,
     Exchange,
     Lsp,
+    Spark,
 }
 
 impl std::fmt::Display for ServiceKind {
@@ -16,6 +17,7 @@ impl std::fmt::Display for ServiceKind {
             ServiceKind::ConsumerWallet => write!(f, "Consumer wallet"),
             ServiceKind::Exchange => write!(f, "Exchange"),
             ServiceKind::Lsp => write!(f, "LSP"),
+            ServiceKind::Spark => write!(f, "Spark"),
         }
     }
 }
@@ -57,6 +59,15 @@ impl RecipientDecoder {
             ServiceKind::Lsp,
             "Voltage Flow 2.0",
             vec!["03aefa43fbb4009b21a4129d05953974b7dbabbbfb511921410080860fca8ee1f0"],
+        );
+
+        let spark = Provider::new(
+            ServiceKind::Spark,
+            "Spark-based",
+            vec![
+                "039174f846626c6053ba80f5443d0db33da384f1dde135bf7080ba1eec465019c3",
+                "02a98e8c590a1b5602049d6b21d8f4c8861970aa310762f42eae1b2be88372e924",
+            ],
         );
 
         let custodians = vec![
@@ -227,6 +238,7 @@ impl RecipientDecoder {
                 "Blixt",
                 vec!["0230a5bca558e6741460c13dd34e636da28e52afd91cf93db87ed1b0392a7466eb"],
             ),
+            spark,
             voltage,
         ];
         Self {

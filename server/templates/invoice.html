@@ -8,7 +8,15 @@
 	{% when RecipientNode::Custodial { custodian } %}
 	Custodial {{ custodian.service }} <b>{{ custodian.name }}</b>
 	{% when RecipientNode::NonCustodial { id, lsp } %}
+	{% if lsp.service == ServiceKind::Spark %}
+	Non-custodial <b>{{ lsp.name }}</b> wallet
+	{% if !id.is_empty() %}
+	with id <b>{{ id }}</b> <br>
+    {{ self::sparkscan_link(id) }}
+	{% endif %}
+	{% else %}
 	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b> with id <b>{{ id }}</b>
+	{% endif %}
 	{% when RecipientNode::NonCustodialWrapped { lsp } %}
 	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b>
 	{% when RecipientNode::Unknown %}

@@ -211,6 +211,7 @@ fn format_service_kind(service: &ServiceKind) -> &str {
         ServiceKind::ConsumerWallet => "Consumer wallet",
         ServiceKind::Exchange => "Exchange",
         ServiceKind::Lsp => "LSP",
+        ServiceKind::Spark => "Spark",
     }
 }
 

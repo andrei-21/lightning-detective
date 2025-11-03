@@ -9,6 +9,7 @@ mod lnurl;
 mod node;
 pub mod offer_details;
 mod recipient;
+mod spark;
 
 pub use crate::bip353::{resolve_bip353, Bip353Result};
 use crate::graph_database::GraphDatabase;
@@ -19,6 +20,7 @@ pub use crate::lnurl::{resolve_lnurl, Event, LnUrlPayDetails, LnUrlResponseDetai
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
+use crate::spark::detect_spark_address;
 use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
 use lightning::blinded_path::message::BlindedMessagePath;
@@ -66,6 +68,14 @@ impl InvoiceDetective {
         let payee = self.graph_database.query(pubkey.clone())?;
         let route_hints = self.process_route_hints(&invoice.route_hints())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &route_hints);
+        let recipient = match recipient {
+            RecipientNode::NonCustodial { lsp, .. } if lsp.service == ServiceKind::Spark => {
+                // TODO: Handle None value better.
+                let id = detect_spark_address(invoice).unwrap_or_default();
+                RecipientNode::NonCustodial { id, lsp }
+            }
+            recipient => recipient,
+        };
 
         Ok(InvestigativeFindings {
             recipient,

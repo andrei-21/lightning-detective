@@ -6,7 +6,7 @@ use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
-    LnUrlResponseDetails, Node, RecipientNode,
+    LnUrlResponseDetails, Node, RecipientNode, ServiceKind,
 };
 
 #[derive(Template)]
@@ -119,6 +119,13 @@ pub fn explorer_link(node: &Node) -> Safe<String> {
     const EXPLORER_URL: &str = "https://mempool.space/lightning/node";
     let link = format!("{EXPLORER_URL}/{}", node.pubkey);
     external_link(&link, node.alias.as_ref().unwrap_or(&node.pubkey))
+}
+
+pub fn sparkscan_link(spark_address: &String) -> Safe<String> {
+    const EXPLORER_URL: &str = "https://www.sparkscan.io/address";
+    // TODO: Mind network.
+    let link = format!("{EXPLORER_URL}/{spark_address}");
+    external_link(&link, "View on Sparkscan")
 }
 
 pub mod filters {
