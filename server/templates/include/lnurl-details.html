@@ -15,31 +15,37 @@
 <div>{{ loop.index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
 
 {% when Event::Result(Ok(response)) %}
-{% set response_details = LnUrlResponseDetails::from(*response) %}
 <h5>📋 LNURL Pay Response Details</h5>
 <table>
   <tbody>
-	{% match response_details %}
+	{% match response %}
 
-	{% when LnUrlResponseDetails::Pay with (details) %}
-	<tr><th scope="row"> Callback </th><td> {{ details.callback | hex }} </td></tr>
-	<tr><th scope="row"> Sendable amount </th><td> {{ details.sendable_amount }} </td></tr>
-	<tr><th scope="row"> Metadata </th><td> {{ details.metadata }} </td></tr>
-	<tr><th scope="row"> Comment allowed </th><td> {{ details.comment_allowed | or_empty }} </td></tr>
+	{% when LnUrlResponse::Pay with (pay) %}
+	<tr><th scope="row"> Sendable amount </th><td> {{ pay.sendable_amount }} </td></tr>
+	<tr><th scope="row"> Description </th><td> {{ pay.description }} </td></tr>
+	<tr><th scope="row"> Long description </th><td> {{ pay.long_description | or_empty }} </td></tr>
+	<tr><th scope="row"> Comment allowed </th><td> {{ pay.comment_allowed | or_empty }} </td></tr>
+	<tr><th scope="row"> Callback </th><td> {{ pay.callback | hex }} </td></tr>
+	{% if !pay.metadata.is_empty() %}
+	<tr>
+	  <th scope="row"> Metadata </th>
+	  <td>
+		<table>
+		  <tbody>
+			{% for (key, value) in pay.metadata %}
+			<tr>
+			  <th scope="row"> {{ key }} </th>
+			  <td> {{ value }} </td>
+			</tr>
+			{% endfor %}
+		  </tbody>
+		</table>
+	  </td>
+	</tr>
+	{% endif %}
 
-	{% match details.allows_nostr %}
-	{% when Some(true) %}
-	<tr><th scope="row"> Allows nostr </th><td> yes </td></tr>
-	{% when Some(false) %}
-	<tr><th scope="row"> Allows nostr </th><td> no </td></tr>
-	{% when None %}
-	{% endmatch %}
-
-	{% match details.nostr_pubkey %}
-	{% when Some(pubkey) %}
-	<tr><th scope="row"> Nostr pubkey </th><td> {{ pubkey | hex }} </td></tr>
-	{% when None %}
-	{% endmatch %}
+	{% when _ %}
+	TODO
 	{% endmatch %}
 
   </tbody>

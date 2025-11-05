@@ -4,7 +4,9 @@ use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
-use detective::{resolve_bip353, resolve_lnurl, Description, InvoiceDetails};
+use detective::{
+    resolve_bip353, resolve_lnurl, Description, Event, Image, InvoiceDetails, LnUrlResponse,
+};
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
 use tokio_stream::StreamExt;
@@ -36,7 +38,13 @@ async fn main() -> Result<()> {
             println!("{lnurl:?}");
             let mut events = resolve_lnurl(lnurl);
             while let Some(event) = events.next().await {
-                println!("{event:?}");
+                match event {
+                    Event::Result(Ok(response)) => {
+                        print_lnurl_details(response);
+                    }
+                    Event::Result(Err(error)) => eprintln!("{}", format!("Error: {error}").red()),
+                    event => println!("{}", format!("{event:?}").dimmed()),
+                }
             }
         }
         DecodedData::LightningAddress((username, domain), lnurl) => {
@@ -56,6 +64,31 @@ async fn main() -> Result<()> {
         }
     };
     Ok(())
+}
+
+fn print_lnurl_details(details: LnUrlResponse) {
+    println!();
+    match details {
+        LnUrlResponse::Pay(pay) => {
+            println!("📋 {}", " LNURL Pay ".reversed());
+            println!("Send amount: {}", pay.sendable_amount);
+            println!("Description: {}", pay.description);
+            println!("       Long: {}", format_option(&pay.long_description));
+            match pay.image {
+                Some(Image::Jpeg(bytes)) => println!(" JPEG image: {} bytes", bytes.len()),
+                Some(Image::Png(bytes)) => println!("  PNG image: {} bytes", bytes.len()),
+                None => println!("      Image: {}", "empty".italic().dimmed()),
+            };
+            let comment = pay.comment_allowed.map(|c| format!("Up to {c} chars"));
+            println!("    Comment: {}", format_option(&comment));
+            println!("   Callback: {}", pay.callback);
+            for (key, value) in pay.metadata {
+                println!("   Metadata: {key}: {value}");
+            }
+        }
+        _ => todo!(),
+    }
+    println!();
 }
 
 fn print_offer_details(d: OfferDetails) {

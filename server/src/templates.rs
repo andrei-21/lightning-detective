@@ -6,7 +6,7 @@ use detective::decoder::Bip21Param;
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
-    LnUrlResponseDetails, Node, RecipientNode, ServiceKind,
+    LnUrlResponse, Node, RecipientNode, ServiceKind,
 };
 
 #[derive(Template)]

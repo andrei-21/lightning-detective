@@ -1,86 +1,181 @@
-use anyhow::{ensure, Error, Result};
-use lnurl::{decode_ln_url_response_from_json, LnUrlResponse};
+use anyhow::{anyhow, bail, ensure, Context, Error, Result};
+use base64::{engine::general_purpose, Engine as _};
+use lnurl::decode_ln_url_response_from_json;
 use reqwest::{Method, StatusCode};
 use serde_json::Value;
 use std::time::Duration;
-use thousands::Separable;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
 use tokio_stream::Stream;
 
 use crate::decoder::{LnUrl, LnUrlKind};
+use crate::types::{Msat, MsatRange};
 
-#[derive(Debug)]
-pub enum LnUrlResponseDetails {
-    Pay(LnUrlPayDetails),
+#[derive(Debug, Clone)]
+pub enum LnUrlResponse {
+    Pay(PayResponse),
+    Withdraw(WithdrawalResponse),
+    Channel(ChannelResponse),
 }
 
-#[derive(Debug)]
-pub struct LnUrlPayDetails {
+impl TryFrom<lnurl::LnUrlResponse> for LnUrlResponse {
+    type Error = Error;
+
+    fn try_from(response: lnurl::LnUrlResponse) -> Result<Self> {
+        Ok(match response {
+            lnurl::LnUrlResponse::LnUrlPayResponse(response) => {
+                LnUrlResponse::Pay(response.try_into()?)
+            }
+            lnurl::LnUrlResponse::LnUrlWithdrawResponse(response) => {
+                LnUrlResponse::Withdraw(response.try_into()?)
+            }
+            lnurl::LnUrlResponse::LnUrlChannelResponse(response) => {
+                LnUrlResponse::Channel(response.try_into()?)
+            }
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Image {
+    Png(Vec<u8>),
+    Jpeg(Vec<u8>),
+}
+
+#[derive(Debug, Clone)]
+pub struct PayResponse {
+    pub sendable_amount: MsatRange,
+    pub description: String,
+    pub long_description: Option<String>,
+    pub image: Option<Image>,
+    pub comment_allowed: Option<u32>,
     pub callback: String,
-    pub sendable_amount: String,
-    pub metadata: String,
-    pub comment_allowed: Option<String>,
-    pub allows_nostr: Option<bool>,
-    pub nostr_pubkey: Option<String>,
+    pub metadata: Vec<(String, String)>,
 }
 
-impl From<&LnUrlResponse> for LnUrlResponseDetails {
-    fn from(response: &LnUrlResponse) -> Self {
-        if let LnUrlResponse::LnUrlPayResponse(response) = response {
-            let sendable_amount = if response.min_sendable == response.max_sendable {
-                format_msat(response.min_sendable)
-            } else {
-                let min = format_msat_0(response.min_sendable);
-                let max = format_msat_0(response.max_sendable);
-                format!("{min}–{max} sats")
+#[derive(Debug, Clone)]
+pub struct WithdrawalResponse {
+    pub default_description: String,
+    pub callback: String,
+    pub k1: String,
+    pub max_withdrawable: u64,
+    pub min_withdrawable: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ChannelResponse {
+    pub uri: String,
+    pub callback: String,
+    pub k1: String,
+}
+
+impl TryFrom<lnurl::pay::PayResponse> for PayResponse {
+    type Error = Error;
+
+    fn try_from(pay: lnurl::pay::PayResponse) -> Result<Self> {
+        let parsed: Value =
+            serde_json::from_str(&pay.metadata).context("LNURL metadata is not valid JSON")?;
+        let entries = parsed
+            .as_array()
+            .ok_or(anyhow!("LNURL metadata is not a JSON array"))?;
+
+        let mut description: Option<String> = None;
+        let mut long_description: Option<String> = None;
+        let mut image = None;
+        let mut metadata = Vec::new();
+
+        for (index, entry) in entries.iter().enumerate() {
+            let array = entry
+                .as_array()
+                .ok_or(anyhow!("LNURL metadata entry #{index} is not an array"))?;
+            let (key, value) = match &array[..] {
+                [key, value] => (key, value),
+                _ => bail!("LNURL metadata entry #{index} must have exactly two elements"),
             };
-            Self::Pay(LnUrlPayDetails {
-                callback: response.callback.clone(),
-                sendable_amount,
-                metadata: response.metadata.clone(),
-                comment_allowed: response.comment_allowed.map(up_to),
-                allows_nostr: response.allows_nostr,
-                nostr_pubkey: response.nostr_pubkey.map(|key| key.to_string()),
-            })
-        } else {
-            panic!()
+            let key = key.as_str().ok_or(anyhow!(
+                "LNURL metadata entry #{index} type is not a string"
+            ))?;
+            let value = value.as_str().ok_or(anyhow!(
+                "LNURL metadata entry #{index} value is not a string"
+            ))?;
+
+            match key {
+                "text/plain" => {
+                    ensure!(
+                        !value.is_empty(),
+                        "LNURL metadata text/plain value must not be empty"
+                    );
+                    ensure!(
+                        description.is_none(),
+                        "LNURL metadata must have no more than one text/plain value"
+                    );
+                    description = Some(value.to_string());
+                }
+                "text/long-desc" | "text/longdesc" => {
+                    ensure!(
+                        !value.is_empty(),
+                        "LNURL metadata text/long-desc value must not be empty"
+                    );
+                    long_description = Some(value.to_string());
+                }
+                "image/png;base64" => {
+                    let bytes = decode_base64(value, "image/png")?;
+                    ensure!(
+                        image.is_none(),
+                        "LNURL metadata must have no more than one image/png;base64 or image/jpeg;base64 value"
+                    );
+                    image = Some(Image::Png(bytes));
+                }
+                "image/jpeg;base64" => {
+                    let bytes = decode_base64(value, "image/jpeg")?;
+                    ensure!(
+                        image.is_none(),
+                        "LNURL metadata must have no more than one image/png;base64 or image/jpeg;base64 value"
+                    );
+                    image = Some(Image::Jpeg(bytes));
+                }
+                key => metadata.push((key.to_string(), value.to_string())),
+            }
         }
+
+        let description = description.ok_or(anyhow!(
+            "LNURL metadata is missing required text/plain entry"
+        ))?;
+
+        // TODO: Validate amounts.
+        Ok(Self {
+            description,
+            long_description,
+            sendable_amount: MsatRange(Msat(pay.min_sendable), Msat(pay.max_sendable)),
+            image,
+            comment_allowed: pay.comment_allowed,
+            callback: pay.callback,
+            metadata,
+        })
     }
 }
 
-fn up_to(num: u32) -> String {
-    match num {
-        0 => "no".to_string(),
-        1 => "Up to one character".to_string(),
-        n => format!("Up to {n} characters"),
+impl TryFrom<lnurl::withdraw::WithdrawalResponse> for WithdrawalResponse {
+    type Error = Error;
+
+    fn try_from(_withdraw: lnurl::withdraw::WithdrawalResponse) -> Result<Self> {
+        todo!()
     }
 }
 
-fn format_msat_0(msat: u64) -> String {
-    match msat {
-        1000 => "1".to_string(),
-        msat if msat % 1000 == 0 => (msat / 1000).separate_with_commas().to_string(),
-        msat => {
-            let sat = msat / 1000;
-            let sat = sat.separate_with_commas();
-            let msat = msat % 1000;
-            format!("{sat}.{msat:03}")
-        }
+impl TryFrom<lnurl::channel::ChannelResponse> for ChannelResponse {
+    type Error = Error;
+
+    fn try_from(_channel: lnurl::channel::ChannelResponse) -> Result<Self> {
+        todo!()
     }
 }
 
-fn format_msat(msat: u64) -> String {
-    match msat {
-        1000 => "1 sat".to_string(),
-        msat if msat % 1000 == 0 => format!("{} sats", (msat / 1000).separate_with_commas()),
-        msat => {
-            let sat = msat / 1000;
-            let sat = sat.separate_with_commas();
-            let msat = msat % 1000;
-            format!("{sat}.{msat:03} sats")
-        }
-    }
+fn decode_base64(value: &str, label: &str) -> Result<Vec<u8>> {
+    let bytes = general_purpose::STANDARD
+        .decode(value.as_bytes())
+        .context(format!("LNURL metadata {label} value is not valid base64"))?;
+    Ok(bytes)
 }
 
 #[derive(Debug)]
@@ -136,8 +231,7 @@ pub async fn resolve_lnurl_impl(
             "LNURL kind mismatch: expected {expected:?}, got {actual:?}"
         );
     }
-
-    Ok(response)
+    response.try_into()
 
     // let symbol = if pay.callback.contains('?') { '&' } else { '?' };
     // let url = format!("{}{symbol}amount={}", pay.callback, pay.min_sendable);
@@ -156,11 +250,11 @@ pub async fn resolve_lnurl_impl(
     // Ok(invoice_response.pr)
 }
 
-fn response_kind(response: &LnUrlResponse) -> LnUrlKind {
+fn response_kind(response: &lnurl::LnUrlResponse) -> LnUrlKind {
     match response {
-        LnUrlResponse::LnUrlPayResponse(_) => LnUrlKind::Pay,
-        LnUrlResponse::LnUrlWithdrawResponse(_) => LnUrlKind::Withdraw,
-        LnUrlResponse::LnUrlChannelResponse(_) => LnUrlKind::Channel,
+        lnurl::LnUrlResponse::LnUrlPayResponse(_) => LnUrlKind::Pay,
+        lnurl::LnUrlResponse::LnUrlWithdrawResponse(_) => LnUrlKind::Withdraw,
+        lnurl::LnUrlResponse::LnUrlChannelResponse(_) => LnUrlKind::Channel,
     }
 }
 

@@ -10,13 +10,14 @@ mod node;
 pub mod offer_details;
 mod recipient;
 mod spark;
+pub mod types;
 
 pub use crate::bip353::{resolve_bip353, Bip353Result};
 use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
     Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
-pub use crate::lnurl::{resolve_lnurl, Event, LnUrlPayDetails, LnUrlResponseDetails};
+pub use crate::lnurl::{resolve_lnurl, Event, Image, LnUrlResponse, PayResponse};
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
