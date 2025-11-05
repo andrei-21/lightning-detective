@@ -1,5 +1,5 @@
 # ---- Build Stage ----
-FROM rust:1.86-slim-bookworm as builder
+FROM rust:1.87-slim-bookworm as builder
 WORKDIR /workspace
 
 RUN apt-get update \
