@@ -2,6 +2,29 @@ use std::{fmt, ops::Rem};
 use thousands::Separable;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Sat(pub u64);
+
+impl fmt::Display for Sat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let sats = self.0;
+        write!(f, "{}", sats.separate_with_commas())?;
+        if !f.alternate() {
+            write!(f, " sat")?;
+            if sats != 1 {
+                write!(f, "s")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl From<bitcoin::Amount> for Sat {
+    fn from(amount: bitcoin::Amount) -> Self {
+        Self(amount.to_sat())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Msat(pub u64);
 
 impl fmt::Display for Msat {
@@ -43,7 +66,25 @@ impl fmt::Display for MsatRange {
 
 #[cfg(test)]
 mod tests {
-    use super::{Msat, MsatRange};
+    use super::{Msat, MsatRange, Sat};
+
+    #[test]
+    fn sat_display() {
+        assert_eq!(Sat(0).to_string(), "0 sats");
+        assert_eq!(Sat(1).to_string(), "1 sat");
+        assert_eq!(Sat(2).to_string(), "2 sats");
+        assert_eq!(Sat(1_000).to_string(), "1,000 sats");
+
+        assert_eq!(format!("{:#}", Sat(2)), "2");
+        assert_eq!(format!("{:#}", Sat(1_000)), "1,000");
+    }
+
+    #[test]
+    fn sat_from_bitcoin_amount() {
+        let amount = bitcoin::Amount::from_sat(42);
+        let sat: Sat = amount.into();
+        assert_eq!(sat, Sat(42));
+    }
 
     #[test]
     fn msat_display() {

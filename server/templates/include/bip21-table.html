@@ -17,7 +17,7 @@
 	<tr>
 	  {% match param %}
 	  {% when Bip21Param::Amount with (sats) %}
-	  <th scope="row"> Amount </th> <td> {{ self::format_sat(sats) }} </td>
+	  <th scope="row"> Amount </th> <td> {{ sats }} </td>
 
 	  {% when Bip21Param::Label with (label) %}
 	  <th scope="row"> Label </th> <td> {{ label }} </td>

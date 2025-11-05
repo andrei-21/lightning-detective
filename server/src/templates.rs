@@ -65,13 +65,6 @@ pub struct LightningAddressTemplate {
     pub events: Vec<Event>,
 }
 
-pub fn format_sat(sat: &u64) -> String {
-    match sat {
-        1 => "1 sat".to_string(),
-        sat => format!("{} sats", sat),
-    }
-}
-
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {
     let result = match flag {
         FeatureFlag::Required => HtmlElement::new(HtmlTag::Mark)

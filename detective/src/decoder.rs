@@ -6,6 +6,8 @@ use lightning_invoice::Bolt11Invoice;
 use reqwest::Url;
 use std::str::FromStr;
 
+use crate::types::Sat;
+
 const BITCOIN_PREFIX: &str = "bitcoin:";
 
 #[derive(Debug)]
@@ -153,7 +155,7 @@ fn scheme_for(url: &Url) -> &'static str {
 
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Bip21Param {
-    Amount(u64),
+    Amount(Sat),
     Label(String),
     Message(String),
     Lightning(String),
@@ -203,7 +205,7 @@ impl TryFrom<(&str, &str)> for Bip21Param {
             "amount" => {
                 let amount = bitcoin::Amount::from_str_in(value, bitcoin::Denomination::Bitcoin)
                     .map_err(|e| anyhow!("Failed to amount decode param: {e}"))?;
-                Self::Amount(amount.to_sat())
+                Self::Amount(amount.into())
             }
             "label" => Self::Label(decode_percent(value)?),
             "message" => Self::Message(decode_percent(value)?),
@@ -240,6 +242,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Sat;
 
     #[test]
     fn decodes_bolt11_invoice_without_scheme() {
@@ -297,7 +300,7 @@ mod tests {
                 assert_eq!(
                     params,
                     vec![
-                        Bip21Param::Amount(100_000),
+                        Bip21Param::Amount(Sat(100_000)),
                         Bip21Param::Label("Donation".to_string()),
                         Bip21Param::Message("Thanks for your support".to_string())
                     ]
