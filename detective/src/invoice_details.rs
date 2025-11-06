@@ -1,8 +1,8 @@
+use crate::types::{Msat, MsatRange};
 use chrono::{DateTime, Utc};
 use lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescriptionRef, RouteHint, RouteHintHop};
 use std::fmt::Write;
 use std::time::Duration;
-use thousands::Separable;
 
 #[derive(Debug)]
 pub enum FeatureFlag {
@@ -15,7 +15,7 @@ pub enum FeatureFlag {
 pub struct InvoiceDetails {
     pub network: String,
     pub description: Description,
-    pub amount: Option<String>,
+    pub amount: Option<Msat>,
     pub payment_hash: String,
     pub payment_secret: String,
     pub payment_metadata: Option<String>,
@@ -35,10 +35,10 @@ pub struct InvoiceDetails {
 pub struct RouteHintHopDetails {
     pub src_node_id: String,
     pub short_channel_id: u64,
-    pub base_fee: String,
+    pub base_fee: Msat,
     pub proportional_fee: String,
     pub cltv_expiry_delta: String,
-    pub htlc_limits: String,
+    pub htlc_size: MsatRange,
 }
 
 #[derive(Debug, Clone)]
@@ -53,27 +53,21 @@ impl From<RouteHint> for RouteHintDetails {
         }
     }
 }
-
-fn format_limits(min_msat: Option<u64>, max_msat: Option<u64>) -> String {
-    match (min_msat, max_msat) {
-        (None, None) => "any".to_string(),
-        (Some(min_msat), None) => format!("≥ {}", format_msat(min_msat)),
-        (None, Some(max_msat)) => format!("≤ {}", format_msat(max_msat)),
-        (Some(min_msat), Some(max_msat)) => {
-            format!("{}–{}", format_msat_0(min_msat), format_msat_0(max_msat))
-        }
-    }
-}
-
 impl From<RouteHintHop> for RouteHintHopDetails {
     fn from(hop: RouteHintHop) -> Self {
+        let htlc_size = match (hop.htlc_minimum_msat, hop.htlc_maximum_msat) {
+            (None, None) => MsatRange::Any,
+            (Some(min_msat), None) => MsatRange::Min(Msat(min_msat)),
+            (None, Some(max_msat)) => MsatRange::Max(Msat(max_msat)),
+            (Some(min_msat), Some(max_msat)) => MsatRange::Between(Msat(min_msat), Msat(max_msat)),
+        };
         Self {
             src_node_id: hop.src_node_id.to_string(),
             short_channel_id: hop.short_channel_id,
-            base_fee: format_msat(hop.fees.base_msat as u64),
+            base_fee: Msat(hop.fees.base_msat as u64),
             proportional_fee: format_proportional(hop.fees.proportional_millionths),
             cltv_expiry_delta: format_number_of_blocks(hop.cltv_expiry_delta as u64),
-            htlc_limits: format_limits(hop.htlc_minimum_msat, hop.htlc_maximum_msat),
+            htlc_size,
         }
     }
 }
@@ -82,35 +76,9 @@ fn to_lower_hex(data: impl AsRef<[u8]>) -> String {
     let bytes = data.as_ref();
     let mut output = String::with_capacity(bytes.len() * 2);
     for byte in bytes {
-        let _ = write!(&mut output, "{:02x}", byte);
+        let _ = write!(&mut output, "{byte:02x}");
     }
     output
-}
-
-fn format_msat_0(msat: u64) -> String {
-    match msat {
-        1000 => "1".to_string(),
-        msat if msat % 1000 == 0 => (msat / 1000).separate_with_commas().to_string(),
-        msat => {
-            let sat = msat / 1000;
-            let sat = sat.separate_with_commas();
-            let msat = msat % 1000;
-            format!("{sat}.{msat:03}")
-        }
-    }
-}
-
-fn format_msat(msat: u64) -> String {
-    match msat {
-        1000 => "1 sat".to_string(),
-        msat if msat % 1000 == 0 => format!("{} sats", (msat / 1000).separate_with_commas()),
-        msat => {
-            let sat = msat / 1000;
-            let sat = sat.separate_with_commas();
-            let msat = msat % 1000;
-            format!("{sat}.{msat:03} sats")
-        }
-    }
 }
 
 fn format_proportional(ppm: u32) -> String {
@@ -164,7 +132,7 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
             }
             Bolt11InvoiceDescriptionRef::Hash(hash) => Description::Hash(to_lower_hex(hash.0)),
         };
-        let amount = invoice.amount_milli_satoshis().map(format_msat);
+        let amount = invoice.amount_milli_satoshis().map(Msat);
         let payment_hash = invoice.payment_hash().to_string();
         let payment_secret = invoice.payment_secret().to_string();
         let payment_metadata = invoice.payment_metadata().map(to_lower_hex);

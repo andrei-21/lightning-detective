@@ -51,15 +51,30 @@ impl fmt::Display for Msat {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct MsatRange(pub Msat, pub Msat);
+pub enum MsatRange {
+    Any,
+    Between(Msat, Msat),
+    Min(Msat),
+    Max(Msat),
+}
 
 impl fmt::Display for MsatRange {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.0 == self.1 {
-            self.0.fmt(f)
-        } else {
-            write!(f, "{:#}-", self.0)?;
-            self.1.fmt(f)
+        match self {
+            Self::Any => write!(f, "any"),
+            Self::Between(min, max) if min == max => min.fmt(f),
+            Self::Between(min, max) => {
+                write!(f, "{min:#}–")?;
+                max.fmt(f)
+            }
+            Self::Min(min) => {
+                write!(f, "≥ ")?;
+                min.fmt(f)
+            }
+            Self::Max(max) => {
+                write!(f, "≤ ")?;
+                max.fmt(f)
+            }
         }
     }
 }
@@ -100,16 +115,27 @@ mod tests {
 
     #[test]
     fn msat_range_display() {
-        let range = MsatRange(Msat(1_000), Msat(1_000));
-        assert_eq!(range.to_string(), "1 sat");
-        assert_eq!(format!("{range:#}"), "1");
+        let range = MsatRange::Between(Msat(500), Msat(1_000));
+        assert_eq!(range.to_string(), "0.500–1 sat");
+        assert_eq!(format!("{range:#}"), "0.500–1");
 
-        let range = MsatRange(Msat(2_000), Msat(2_000));
-        assert_eq!(range.to_string(), "2 sats");
-        assert_eq!(format!("{range:#}"), "2");
+        let range = MsatRange::Between(Msat(1_000), Msat(2_000));
+        assert_eq!(range.to_string(), "1–2 sats");
+        assert_eq!(format!("{range:#}"), "1–2");
 
-        let range = MsatRange(Msat(1_000), Msat(2_345));
-        assert_eq!(range.to_string(), "1-2.345 sats");
-        assert_eq!(format!("{range:#}"), "1-2.345");
+        let range = MsatRange::Between(Msat(1_000), Msat(2_345));
+        assert_eq!(range.to_string(), "1–2.345 sats");
+        assert_eq!(format!("{range:#}"), "1–2.345");
+
+        let range = MsatRange::Min(Msat(1_000));
+        assert_eq!(range.to_string(), "≥ 1 sat");
+        assert_eq!(format!("{range:#}"), "≥ 1");
+
+        let range = MsatRange::Max(Msat(2_000));
+        assert_eq!(range.to_string(), "≤ 2 sats");
+        assert_eq!(format!("{range:#}"), "≤ 2");
+
+        assert_eq!(MsatRange::Any.to_string(), "any");
+        assert_eq!(format!("{:#}", MsatRange::Any), "any");
     }
 }

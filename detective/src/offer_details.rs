@@ -37,7 +37,7 @@ impl From<lightning::offers::offer::Amount> for Amount {
             }
             lightning::offers::offer::Amount::Bitcoin { amount_msats } => Self {
                 amount: amount_msats,
-                iso4217_code: "SAT".to_string(),
+                iso4217_code: "sats".to_string(),
                 exponent: 3,
             },
         }

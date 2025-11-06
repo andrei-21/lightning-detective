@@ -146,7 +146,7 @@ impl TryFrom<lnurl::pay::PayResponse> for PayResponse {
         Ok(Self {
             description,
             long_description,
-            sendable_amount: MsatRange(Msat(pay.min_sendable), Msat(pay.max_sendable)),
+            sendable_amount: MsatRange::Between(Msat(pay.min_sendable), Msat(pay.max_sendable)),
             image,
             comment_allowed: pay.comment_allowed,
             callback: pay.callback,
