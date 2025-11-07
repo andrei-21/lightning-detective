@@ -96,18 +96,17 @@ async fn parse_impl(input: &str) -> Result<String> {
             let invoice = InvoiceDetails::from(&invoice);
             InvoiceTemplate { invoice, findings }.render()
         }
-        DecodedData::Bip21(address, params) => Bip21Template { address, params }.render(),
+        DecodedData::Bip21(bip21) => Bip21Template { bip21 }.render(),
         DecodedData::Bip353(hrn) => {
             let result = resolve_bip353(&hrn)
                 .await
                 .context("Failed to resolve BIP-353 address")?;
-            let (address, params) =
+            let bip21 =
                 parse_bip21(&result.bip21).context("Failed to parse resolved BIP-21 URI")?;
             Bip353Template {
                 hrn: (hrn.user().to_string(), hrn.domain().to_string()),
                 result,
-                address,
-                params,
+                bip21,
             }
             .render()
         }
@@ -116,13 +115,26 @@ async fn parse_impl(input: &str) -> Result<String> {
             let events: Vec<Event> = stream.collect().await;
             LnurlTemplate { events }.render()
         }
-        DecodedData::LightningAddress((username, domain), lnurl) => {
-            let stream = resolve_lnurl(lnurl.clone());
+        DecodedData::LightningAddress(lightning_address) => {
+            let stream = resolve_lnurl(lightning_address.lnurl.clone());
             let events: Vec<Event> = stream.collect().await;
             LightningAddressTemplate {
-                username,
-                domain,
+                lightning_address,
                 events,
+            }
+            .render()
+        }
+        DecodedData::Bip353OrLightningAddress(hrn, _lightning_address) => {
+            let result = resolve_bip353(&hrn)
+                .await
+                .context("Failed to resolve BIP-353 address")?;
+            let bip21 =
+                parse_bip21(&result.bip21).context("Failed to parse resolved BIP-21 URI")?;
+
+            Bip353Template {
+                hrn: (hrn.user().to_string(), hrn.domain().to_string()),
+                result,
+                bip21,
             }
             .render()
         }
@@ -142,7 +154,7 @@ fn render_template<T: Template>(template: &T) -> String {
 }
 
 fn render_error(err: Error) -> String {
-    tracing::error!(error = %err, "Request handling error");
+    tracing::error!(error = format!("{err:#}"), "Request handling error");
     ErrorTemplate { err }
         .render()
         .unwrap_or_else(|render_err| format!("Failed to render error page: {render_err}"))

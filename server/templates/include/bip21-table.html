@@ -3,8 +3,8 @@
 	<tr>
 	  <th scope="row"> On-chain address </th>
 	  <td>
-		{{ address | or_empty_hex }}
-		{% match address %}
+		{{ bip21.address | or_empty_hex }}
+		{% match bip21.address %}
 		{% when Some with (address) %}
 		<br>
 		{{ self::investigate_link(address) }}
@@ -13,7 +13,7 @@
 	  </td>
 	</tr>
 
-	{% for param in params %}
+	{% for param in bip21.params %}
 	<tr>
 	  {% match param %}
 	  {% when Bip21Param::Amount with (sats) %}
@@ -26,11 +26,11 @@
 	  <th scope="row"> Message </th> <td> {{ message }} </td>
 
 	  {% when Bip21Param::Lightning with (invoice) %}
-	  <th scope="row"> BOLT-11 Invoice </th>
+	  <th scope="row"> BOLT-11 invoice </th>
 	  <td> {{ invoice | hex }} <br> {{ self::investigate_link(invoice) }} </td>
 
 	  {% when Bip21Param::Offer with (offer) %}
-	  <th scope="row"> BOLT-12 Offer </th>
+	  <th scope="row"> BOLT-12 offer </th>
 	  <td> {{ offer | hex }} <br> {{ self::investigate_link(offer) }} </td>
 
 	  {% when Bip21Param::SilentPayment with (sp) %}

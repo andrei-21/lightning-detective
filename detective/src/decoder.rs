@@ -6,6 +6,7 @@ use lightning_invoice::Bolt11Invoice;
 use reqwest::Url;
 use std::str::FromStr;
 
+use crate::lnurl::LightningAddress;
 use crate::types::Sat;
 
 const BITCOIN_PREFIX: &str = "bitcoin:";
@@ -16,10 +17,11 @@ pub enum DecodedData {
     Invoice(Bolt11Invoice),
     Offer(Offer),
     Refund(Refund),
-    LightningAddress((String, String), LnUrl),
+    LightningAddress(LightningAddress),
     LnUrl(LnUrl),
-    Bip21(Option<String>, Vec<Bip21Param>),
+    Bip21(Bip21),
     Bip353(HumanReadableName),
+    Bip353OrLightningAddress(HumanReadableName, LightningAddress),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -33,15 +35,18 @@ pub fn decode(input: &str) -> Result<DecodedData> {
     let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
     } else if lowercased.starts_with(BITCOIN_PREFIX) {
-        let (address, params) = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
-        DecodedData::Bip21(address, params)
+        let bip21 = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
+        DecodedData::Bip21(bip21)
     } else if input.starts_with('₿') {
         let hrn =
             HumanReadableName::from_encoded(input).map_err(|()| anyhow!("Invalid BIP-353 name"))?;
         DecodedData::Bip353(hrn)
     } else if let Ok(hrn) = HumanReadableName::from_encoded(input) {
-        // TODO: Can be a lightning address also.
-        DecodedData::Bip353(hrn)
+        if let Ok(lightning_address) = LightningAddress::from_str(input) {
+            DecodedData::Bip353OrLightningAddress(hrn, lightning_address)
+        } else {
+            DecodedData::Bip353(hrn)
+        }
     } else {
         decode_lightning(&lowercased)?
     };
@@ -55,17 +60,8 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         .filter(|c| *c != '+' && !c.is_whitespace())
         .collect();
     let decoded_data = if input.contains('@') {
-        let (username, domain) = input
-            .split_once('@')
-            .ok_or(anyhow!("Lightning address must have `@`"))?;
-        let is_username_valid = username
-            .chars()
-            .all(|c| c.is_ascii_lowercase() || c.is_numeric() || ['-', '_', '.'].contains(&c));
-        // TODO: Support + in lightning addresses.
-        ensure!(is_username_valid, "Invalid Lightning address username");
-        ensure!(is_domain(domain), "Invalid Lightning address domain");
-        let lnurl = LnUrl::from_str(&format!("lnurlp://{domain}/.well-known/lnurlp/{username}"))?;
-        DecodedData::LightningAddress((username.to_string(), domain.to_string()), lnurl)
+        let lightning_address = LightningAddress::from_str(input)?;
+        DecodedData::LightningAddress(lightning_address)
     } else if input.starts_with("lno") {
         let offer = Offer::from_str(&filtered_input)
             .map_err(|e| anyhow!("Failed to parse BOLT-12 offer: {e:?}"))?;
@@ -96,18 +92,6 @@ fn decode_lightning(input: &str) -> Result<DecodedData> {
         bail!("Input is not recognized");
     };
     Ok(decoded_data)
-}
-
-fn is_domain(s: &str) -> bool {
-    !s.is_empty()
-        && s.len() <= 253
-        && s.bytes()
-            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'.')
-        && !s.starts_with('-')
-        && !s.ends_with('-')
-        && !s.starts_with('.')
-        && !s.ends_with('.')
-        && s.split('.').all(|l| !l.is_empty() && l.len() <= 63)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,6 +137,12 @@ fn scheme_for(url: &Url) -> &'static str {
     }
 }
 
+#[derive(Debug)]
+pub struct Bip21 {
+    pub address: Option<String>,
+    pub params: Vec<Bip21Param>,
+}
+
 #[derive(Debug, PartialEq, PartialOrd, Eq, Ord)]
 pub enum Bip21Param {
     Amount(Sat),
@@ -167,7 +157,7 @@ pub enum Bip21Param {
     Unknown(String, String),
 }
 
-pub fn parse_bip21(uri: &str) -> Result<(Option<String>, Vec<Bip21Param>)> {
+pub fn parse_bip21(uri: &str) -> Result<Bip21> {
     let (prefix, uri) = uri
         .split_at_checked(BITCOIN_PREFIX.len())
         .ok_or(anyhow!("Invalid prefix"))?;
@@ -194,7 +184,7 @@ pub fn parse_bip21(uri: &str) -> Result<(Option<String>, Vec<Bip21Param>)> {
         Some(address.to_string())
     };
 
-    Ok((address, params))
+    Ok(Bip21 { address, params })
 }
 
 impl TryFrom<(&str, &str)> for Bip21Param {
@@ -269,7 +259,11 @@ mod tests {
     #[test]
     fn decodes_lightning_address_with_scheme() {
         match decode("lightning:example@getalby.com").unwrap() {
-            DecodedData::LightningAddress((username, domain), lnurl) => {
+            DecodedData::LightningAddress(LightningAddress {
+                username,
+                domain,
+                lnurl,
+            }) => {
                 assert_eq!(username, "example");
                 assert_eq!(domain, "getalby.com");
                 assert_eq!(lnurl.kind, LnUrlKind::Pay);
@@ -292,7 +286,7 @@ mod tests {
     fn decodes_bip21_uri_with_params() {
         let uri = "bitcoin:bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080?amount=0.001&label=Donation&message=Thanks%20for%20your%20support";
         match decode(uri).unwrap() {
-            DecodedData::Bip21(address, params) => {
+            DecodedData::Bip21(Bip21 { address, params }) => {
                 assert_eq!(
                     address.as_deref(),
                     Some("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080")
@@ -323,11 +317,13 @@ mod tests {
 
         let input = "lnurl@bitcoin.org";
         match decode(input).unwrap() {
-            DecodedData::Bip353(hrn) => {
+            DecodedData::Bip353OrLightningAddress(hrn, lightning_address) => {
                 assert_eq!(hrn.user(), "lnurl");
                 assert_eq!(hrn.domain(), "bitcoin.org");
+                assert_eq!(lightning_address.username, "lnurl");
+                assert_eq!(lightning_address.domain, "bitcoin.org");
             }
-            other => panic!("expected BIP-353 name, got {other:?}"),
+            other => panic!("expected BIP-353 name or lightning address, got {other:?}"),
         }
     }
 }

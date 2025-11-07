@@ -2,7 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
-use detective::decoder::{decode, Bip21Param, DecodedData};
+use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     resolve_bip353, resolve_lnurl, Description, Event, Image, InvoiceDetails, LnUrlResponse,
@@ -47,20 +47,41 @@ async fn main() -> Result<()> {
                 }
             }
         }
-        DecodedData::LightningAddress((username, domain), lnurl) => {
-            println!("Lightning address of {username} at {domain}");
-            let mut events = resolve_lnurl(lnurl);
+        DecodedData::LightningAddress(lightning_address) => {
+            println!(
+                "Lightning address of {} at {}",
+                lightning_address.username, lightning_address.domain
+            );
+            let mut events = resolve_lnurl(lightning_address.lnurl);
             while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
         }
-        DecodedData::Bip21(address, params) => {
-            print_bip21(address, params);
+        DecodedData::Bip21(bip21) => {
+            print_bip21(bip21);
         }
-        DecodedData::Bip353(name) => {
-            let result = resolve_bip353(&name).await?;
+        DecodedData::Bip353(hrn) => {
+            let result = resolve_bip353(&hrn).await?;
             println!("DNS resolves to: {}", result.bip21);
             println!("          proof: {}", result.proof);
+        }
+        DecodedData::Bip353OrLightningAddress(hrn, lightning_address) => {
+            match resolve_bip353(&hrn).await {
+                Ok(result) => {
+                    println!("DNS resolves to: {}", result.bip21);
+                    println!("          proof: {}", result.proof);
+                }
+                Err(e) => println!("Not a BIP-353 DNS: {e}"),
+            };
+            println!();
+            println!(
+                "Lightning address of {} at {}",
+                lightning_address.username, lightning_address.domain
+            );
+            let mut events = resolve_lnurl(lightning_address.lnurl);
+            while let Some(event) = events.next().await {
+                println!("{event:?}");
+            }
         }
     };
     Ok(())
@@ -190,12 +211,12 @@ fn print_invoice_details(invoice: InvoiceDetails) {
     println!();
 }
 
-fn print_bip21(address: Option<String>, mut params: Vec<Bip21Param>) {
+fn print_bip21(bip21: Bip21) {
     println!("📋 {}", " BIP 21 ".reversed());
 
-    println!("On-chain address: {}", format_option(&address));
-    params.sort();
-    for param in params {
+    println!("On-chain address: {}", format_option(&bip21.address));
+    //    params.sort();
+    for param in bip21.params {
         match param {
             Bip21Param::Amount(amount) => println!("          Amount: {amount}"),
             Bip21Param::Label(v) => println!("           Label: {v}"),

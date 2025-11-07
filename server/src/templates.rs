@@ -2,11 +2,11 @@ use anyhow::Error;
 use askama::filters::Safe;
 use askama::Template;
 use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
-use detective::decoder::Bip21Param;
+use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
-    LnUrlResponse, Node, RecipientNode, ServiceKind,
+    LightningAddress, LnUrlResponse, Node, RecipientNode, ServiceKind,
 };
 
 #[derive(Template)]
@@ -38,8 +38,7 @@ pub struct InvoiceTemplate {
 #[derive(Template)]
 #[template(path = "bip21.html")]
 pub struct Bip21Template {
-    pub address: Option<String>,
-    pub params: Vec<Bip21Param>,
+    pub bip21: Bip21,
 }
 
 #[derive(Template)]
@@ -47,8 +46,7 @@ pub struct Bip21Template {
 pub struct Bip353Template {
     pub hrn: (String, String),
     pub result: Bip353Result,
-    pub address: Option<String>,
-    pub params: Vec<Bip21Param>,
+    pub bip21: Bip21,
 }
 
 #[derive(Template)]
@@ -60,8 +58,7 @@ pub struct LnurlTemplate {
 #[derive(Template)]
 #[template(path = "lightning-address.html")]
 pub struct LightningAddressTemplate {
-    pub username: String,
-    pub domain: String,
+    pub lightning_address: LightningAddress,
     pub events: Vec<Event>,
 }
 

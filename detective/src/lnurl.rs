@@ -3,6 +3,7 @@ use base64::{engine::general_purpose, Engine as _};
 use lnurl::decode_ln_url_response_from_json;
 use reqwest::{Method, StatusCode};
 use serde_json::Value;
+use std::str::FromStr;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -10,6 +11,33 @@ use tokio_stream::Stream;
 
 use crate::decoder::{LnUrl, LnUrlKind};
 use crate::types::{Msat, MsatRange};
+
+#[derive(Debug, Clone)]
+pub struct LightningAddress {
+    pub username: String,
+    pub domain: String,
+    pub lnurl: LnUrl,
+}
+
+impl FromStr for LightningAddress {
+    type Err = Error;
+    fn from_str(input: &str) -> Result<Self> {
+        let (username, domain) = input
+            .split_once('@')
+            .ok_or(anyhow!("Lightning address must have `@`"))?;
+        ensure!(
+            is_valid_lightnig_address_username(username),
+            "Invalid Lightning address username"
+        );
+        ensure!(is_domain(domain), "Invalid Lightning address domain");
+        let lnurl = LnUrl::from_str(&format!("lnurlp://{domain}/.well-known/lnurlp/{username}"))?;
+        Ok(Self {
+            username: username.to_string(),
+            domain: domain.to_string(),
+            lnurl,
+        })
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum LnUrlResponse {
@@ -266,4 +294,23 @@ fn expected_response_kind(kind: &LnUrlKind) -> Option<LnUrlKind> {
         LnUrlKind::Login => Some(LnUrlKind::Login),
         LnUrlKind::Unknown => None,
     }
+}
+
+fn is_valid_lightnig_address_username(username: &str) -> bool {
+    // TODO: Support + in lightning addresses.
+    username
+        .chars()
+        .all(|c| c.is_ascii_lowercase() || c.is_numeric() || ['-', '_', '.'].contains(&c))
+}
+
+fn is_domain(s: &str) -> bool {
+    !s.is_empty()
+        && s.len() <= 253
+        && s.bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'.')
+        && !s.starts_with('-')
+        && !s.ends_with('-')
+        && !s.starts_with('.')
+        && !s.ends_with('.')
+        && s.split('.').all(|l| !l.is_empty() && l.len() <= 63)
 }
