@@ -20,16 +20,3 @@ lightning invoices incorporate additional routing details,
 such as the LSP node public key.
 When the LSP is associated with a well known node like [ACINQ](https://mempool.space/lightning/node/03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f),
 it is reasonable to conclude that the recipient is utilizing the non-custodial **Phoenix** wallet.
-
-## 🚧 Limitations
-
-## TODOs
-- [X] detect Network
-- [X] handle errors
-- [X] use tera functions
-- [ ] handle LNURL pay
-- [ ] handle Lightning addresses
-- [ ] display more details (expiration time)
-- [ ] move css
-- [ ] serve static files
-- [ ] auto dark mode
