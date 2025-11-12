@@ -1,0 +1,30 @@
+<h5>🔄 Decoding</h5>
+<div align="center">
+  <code>
+	₿<mark class="badge-supported">{{ hrn.0 }}</mark>@<mark class="badge-required">{{ hrn.1}}</mark>
+  </code>
+  <br>
+  ↓
+  <br>
+  <code>
+	<mark class="badge-supported">{{ hrn.0 }}</mark>.user._bitcoin-payment.<mark class="badge-required">{{ hrn.1 }}</mark>
+  </code>
+</div>
+<p></p>
+
+<h5>🌐 Resolving</h5>
+<p>
+  Resolving <code>TXT</code> records of <code>{{ hrn.0 }}.user._bitcoin-payment.{{ hrn.1 }}</code>
+</p>
+
+<h5>📦 Payload</h5>
+<p>{{ result.bip21 | hex }}</p>
+
+<h5>☑️ Proof</h5>
+<details>
+  <summary role="button" class="outline"> {{ result.proof | truncate(16) }} View full</summary>
+  <p>{{ result.proof | hex }}</p>
+</details>
+
+<h5>📋 BIP-21 URI Scheme Details</h5>
+{% include "include/bip21-table.html" %}

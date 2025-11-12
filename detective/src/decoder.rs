@@ -1,5 +1,5 @@
 use anyhow::{anyhow, bail, ensure, Context, Error, Result};
-use bitcoin_payment_instructions::hrn_resolution::HumanReadableName;
+pub use bitcoin_payment_instructions::hrn_resolution::HumanReadableName;
 use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
 use lightning_invoice::Bolt11Invoice;

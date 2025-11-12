@@ -26,7 +26,7 @@ impl FromStr for LightningAddress {
             .split_once('@')
             .ok_or(anyhow!("Lightning address must have `@`"))?;
         ensure!(
-            is_valid_lightnig_address_username(username),
+            is_valid_lightning_address_username(username),
             "Invalid Lightning address username"
         );
         ensure!(is_domain(domain), "Invalid Lightning address domain");
@@ -296,7 +296,7 @@ fn expected_response_kind(kind: &LnUrlKind) -> Option<LnUrlKind> {
     }
 }
 
-fn is_valid_lightnig_address_username(username: &str) -> bool {
+fn is_valid_lightning_address_username(username: &str) -> bool {
     // TODO: Support + in lightning addresses.
     username
         .chars()

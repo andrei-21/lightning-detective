@@ -1,0 +1,15 @@
+<article>
+  {% set name = "BIP-353 DNS Payment Instruction or Lightning Address" %}
+  {% include "include/result-header.html" %}
+
+  <h4>As BIP-353 DNS Payment Instruction</h4>
+  {% match bip353 %}
+  {% when Ok(Bip353Template { hrn, result, bip21}) %}
+  {% include "include/bip353-details.html" %}
+  {% when Err(err) %}
+  {% include "error.html" %}
+  {% endmatch %}
+
+  <h4>As Lightning Address</h4>
+  {% include "include/lightning-address-details.html" %}
+</article>

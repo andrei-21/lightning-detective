@@ -1,20 +1,5 @@
 <article>
   {% set name = "Lightning Address" %}
   {% include "include/result-header.html" %}
-
-  <h5>🔄 Decoding</h5>
-  <div align="center">
-	<code>
-	  <mark class="badge-supported">{{ lightning_address.username }}</mark>@<mark class="badge-required">{{ lightning_address.domain }}</mark>
-	</code>
-	<br>
-	↓
-	<br>
-	<code>
-	  {% if lightning_address.domain.ends_with(".onion") %}<em data-tooltip="HTTP for onion domains">http</em>{% else %}<em data-tooltip="HTTPS for clearnet domains">https</em>{% endif %}://<mark class="badge-required">{{ lightning_address.domain}}</mark>/.well-known/lnurlp/<mark class="badge-supported">{{ lightning_address.username }}</mark>
-	</code>
-  </div>
-  <p></p>
-
-  {% include "include/lnurl-details.html" %}
+  {% include "include/lightning-address-details.html" %}
 </article>

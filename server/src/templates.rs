@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
@@ -58,6 +58,14 @@ pub struct LnurlTemplate {
 #[derive(Template)]
 #[template(path = "lightning-address.html")]
 pub struct LightningAddressTemplate {
+    pub lightning_address: LightningAddress,
+    pub events: Vec<Event>,
+}
+
+#[derive(Template)]
+#[template(path = "bip353-or-lightning-address.html")]
+pub struct Bip353OrLightningAddressTemplate {
+    pub bip353: Result<Bip353Template>,
     pub lightning_address: LightningAddress,
     pub events: Vec<Event>,
 }

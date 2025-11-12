@@ -7,11 +7,12 @@ use axum::extract::{Form, Query};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
-use detective::decoder::{parse_bip21, DecodedData};
+use detective::decoder::{parse_bip21, DecodedData, HumanReadableName};
 use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
+use templates::Bip353OrLightningAddressTemplate;
 use tokio_stream::StreamExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -97,19 +98,7 @@ async fn parse_impl(input: &str) -> Result<String> {
             InvoiceTemplate { invoice, findings }.render()
         }
         DecodedData::Bip21(bip21) => Bip21Template { bip21 }.render(),
-        DecodedData::Bip353(hrn) => {
-            let result = resolve_bip353(&hrn)
-                .await
-                .context("Failed to resolve BIP-353 address")?;
-            let bip21 =
-                parse_bip21(&result.bip21).context("Failed to parse resolved BIP-21 URI")?;
-            Bip353Template {
-                hrn: (hrn.user().to_string(), hrn.domain().to_string()),
-                result,
-                bip21,
-            }
-            .render()
-        }
+        DecodedData::Bip353(hrn) => resolve_and_build_bip353(&hrn).await?.render(),
         DecodedData::LnUrl(lnurl) => {
             let stream = resolve_lnurl(lnurl.clone());
             let events: Vec<Event> = stream.collect().await;
@@ -124,17 +113,16 @@ async fn parse_impl(input: &str) -> Result<String> {
             }
             .render()
         }
-        DecodedData::Bip353OrLightningAddress(hrn, _lightning_address) => {
-            let result = resolve_bip353(&hrn)
-                .await
-                .context("Failed to resolve BIP-353 address")?;
-            let bip21 =
-                parse_bip21(&result.bip21).context("Failed to parse resolved BIP-21 URI")?;
+        DecodedData::Bip353OrLightningAddress(hrn, lightning_address) => {
+            let bip353 = resolve_and_build_bip353(&hrn).await;
 
-            Bip353Template {
-                hrn: (hrn.user().to_string(), hrn.domain().to_string()),
-                result,
-                bip21,
+            let stream = resolve_lnurl(lightning_address.lnurl.clone());
+            let events: Vec<Event> = stream.collect().await;
+
+            Bip353OrLightningAddressTemplate {
+                bip353,
+                events,
+                lightning_address,
             }
             .render()
         }
@@ -145,6 +133,18 @@ async fn parse_impl(input: &str) -> Result<String> {
         }
     }
     .map_err(Error::new)
+}
+
+async fn resolve_and_build_bip353(hrn: &HumanReadableName) -> Result<Bip353Template> {
+    let result = resolve_bip353(hrn)
+        .await
+        .context("Failed to resolve BIP-353 address")?;
+    let bip21 = parse_bip21(&result.bip21).context("Failed to parse resolved BIP-21 URI")?;
+    Ok(Bip353Template {
+        hrn: (hrn.user().to_string(), hrn.domain().to_string()),
+        result,
+        bip21,
+    })
 }
 
 fn render_template<T: Template>(template: &T) -> String {
