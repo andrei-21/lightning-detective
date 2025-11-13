@@ -3,7 +3,9 @@
 use anyhow::{anyhow, Context, Error, Result};
 use askama::filters::Safe;
 use askama::Template;
+use axum::body::Body;
 use axum::extract::{Form, Query};
+use axum::http::{header, Response};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
@@ -24,6 +26,9 @@ use crate::templates::{
     LightningAddressTemplate, LnurlTemplate, OfferTemplate,
 };
 
+static STYLESHEET: &str = include_str!("../static/styles.css");
+static APP_SCRIPT: &str = include_str!("../static/app.js");
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
@@ -36,7 +41,9 @@ async fn main() -> Result<()> {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/api/parse", post(parse));
+        .route("/api/parse", post(parse))
+        .route("/static/styles.css", get(stylesheet))
+        .route("/static/app.js", get(app_script));
 
     let addr: SocketAddr = "0.0.0.0:3000".parse().context("Invalid bind address")?;
     tracing::info!("Listening on http://{addr}");
@@ -159,4 +166,21 @@ fn render_error(err: Error) -> String {
     ErrorTemplate { err }
         .render()
         .unwrap_or_else(|render_err| format!("Failed to render error page: {render_err}"))
+}
+
+async fn stylesheet() -> Response<Body> {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "text/css; charset=utf-8")
+        .body(Body::from(STYLESHEET))
+        .expect("failed to render stylesheet")
+}
+
+async fn app_script() -> Response<Body> {
+    Response::builder()
+        .header(
+            header::CONTENT_TYPE,
+            "application/javascript; charset=utf-8",
+        )
+        .body(Body::from(APP_SCRIPT))
+        .expect("failed to render app script")
 }
