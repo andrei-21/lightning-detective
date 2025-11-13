@@ -1,0 +1,28 @@
+<article>
+  {% set name = "On-Chain Address" %}
+  {% include "include/result-header.html" %}
+  
+  <table>
+	<tbody>
+	  <tr>
+		<th scope="row"> On-chain address </th>
+		<td> {{ address.address | hex }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Type </th>
+		<td>
+		  <mark class="badge-required">{{ address.address_type | or_empty }}</mark>
+		</td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Network </th>
+		<td>
+		  {% for network in address.valid_networks %}
+		  {{ network | capitalize }}{% if !loop.last %},{% endif %}
+		  {% endfor %}
+		</td>
+	  </tr>
+
+	</tbody>
+  </table>
+</article>

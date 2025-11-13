@@ -6,7 +6,7 @@ use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
-    LightningAddress, LnUrlResponse, Node, RecipientNode, ServiceKind,
+    LightningAddress, LnUrlResponse, Node, OnchainAddress, RecipientNode, ServiceKind,
 };
 
 #[derive(Template)]
@@ -22,6 +22,11 @@ pub struct ErrorTemplate {
     pub err: Error,
 }
 
+#[derive(Template)]
+#[template(path = "onchain_address.html")]
+pub struct OnchainAddressTemplate {
+    pub address: OnchainAddress,
+}
 #[derive(Template)]
 #[template(path = "offer.html")]
 pub struct OfferTemplate {

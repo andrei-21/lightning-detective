@@ -8,12 +8,14 @@ use std::str::FromStr;
 
 use crate::lnurl::LightningAddress;
 use crate::types::Sat;
+use crate::OnchainAddress;
 
 const BITCOIN_PREFIX: &str = "bitcoin:";
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum DecodedData {
+    OnchainAddress(OnchainAddress),
     Invoice(Bolt11Invoice),
     Offer(Offer),
     Refund(Refund),
@@ -28,12 +30,13 @@ pub fn decode(input: &str) -> Result<DecodedData> {
     let input = input.trim();
     let lowercased = input.to_lowercase();
 
-    // TODO: Decode on-chain addresses.
     // TODO: Decode BIP 72.
     // TODO: Decode xpub, xpriv.
 
     let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
+    } else if let Ok(address) = OnchainAddress::from_str(input) {
+        DecodedData::OnchainAddress(address)
     } else if lowercased.starts_with(BITCOIN_PREFIX) {
         let bip21 = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
         DecodedData::Bip21(bip21)
@@ -139,7 +142,7 @@ fn scheme_for(url: &Url) -> &'static str {
 
 #[derive(Debug)]
 pub struct Bip21 {
-    pub address: Option<String>,
+    pub address: Option<OnchainAddress>,
     pub params: Vec<Bip21Param>,
 }
 
@@ -181,7 +184,7 @@ pub fn parse_bip21(uri: &str) -> Result<Bip21> {
     let address = if address.is_empty() {
         None
     } else {
-        Some(address.to_string())
+        Some(OnchainAddress::from_str(address)?)
     };
 
     Ok(Bip21 { address, params })
@@ -233,6 +236,7 @@ where
 mod tests {
     use super::*;
     use crate::types::Sat;
+    use bitcoin::{AddressType, Network};
 
     #[test]
     fn decodes_bolt11_invoice_without_scheme() {
@@ -283,13 +287,47 @@ mod tests {
     }
 
     #[test]
-    fn decodes_bip21_uri_with_params() {
-        let uri = "bitcoin:bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080?amount=0.001&label=Donation&message=Thanks%20for%20your%20support";
-        match decode(uri).unwrap() {
-            DecodedData::Bip21(Bip21 { address, params }) => {
+    fn decodes_onchain_address_without_scheme() {
+        let input = "bc1qztwy6xen3zdtt7z0vrgapmjtfz8acjkfp5fp7l";
+
+        match decode(input).unwrap() {
+            DecodedData::OnchainAddress(address) => {
                 assert_eq!(
-                    address.as_deref(),
-                    Some("bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kygt080")
+                    address.address,
+                    "bc1qztwy6xen3zdtt7z0vrgapmjtfz8acjkfp5fp7l"
+                );
+                assert_eq!(address.address_type, Some(AddressType::P2wpkh));
+                assert_eq!(address.valid_networks, vec![Network::Bitcoin]);
+            }
+            other => panic!("expected on-chain address, got {other:?}"),
+        };
+    }
+
+    #[test]
+    fn decodes_onchain_address_with_whitespace() {
+        let input = " \t1BoatSLRHtKNngkdXEeobR76b53LETtpyT \n";
+
+        match decode(input).unwrap() {
+            DecodedData::OnchainAddress(address) => {
+                assert_eq!(address.address, "1BoatSLRHtKNngkdXEeobR76b53LETtpyT");
+                assert_eq!(address.address_type, Some(AddressType::P2pkh));
+                assert_eq!(address.valid_networks, vec![Network::Bitcoin]);
+            }
+            other => panic!("expected on-chain address, got {other:?}"),
+        };
+    }
+
+    #[test]
+    fn decodes_bip21_uri_with_params() {
+        let uri = "bitcoin:bc1qztwy6xen3zdtt7z0vrgapmjtfz8acjkfp5fp7l?amount=0.001&label=Donation&message=Thanks%20for%20your%20support";
+        match decode(uri).unwrap() {
+            DecodedData::Bip21(Bip21 {
+                address: Some(address),
+                params,
+            }) => {
+                assert_eq!(
+                    address.address,
+                    "bc1qztwy6xen3zdtt7z0vrgapmjtfz8acjkfp5fp7l"
                 );
                 assert_eq!(
                     params,

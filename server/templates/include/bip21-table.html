@@ -3,12 +3,14 @@
 	<tr>
 	  <th scope="row"> On-chain address </th>
 	  <td>
-		{{ bip21.address | or_empty_hex }}
 		{% match bip21.address %}
 		{% when Some with (address) %}
+		<mark class="badge-required">{{ address.address_type | or_empty }}</mark>
+		{{ address.address | hex }}
 		<br>
-		{{ self::investigate_link(address) }}
+		{{ self::investigate_link(address.address) }}
 		{% when None %}
+		{{ self::mute("empty") }}
 		{% endmatch %}
 	  </td>
 	</tr>

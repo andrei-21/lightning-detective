@@ -8,6 +8,7 @@ mod invoice_details;
 mod lnurl;
 mod node;
 pub mod offer_details;
+mod onchain_address;
 mod recipient;
 mod spark;
 pub mod types;
@@ -28,6 +29,7 @@ use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
 use lightning::offers::offer::Offer;
 use lightning_invoice::{Bolt11Invoice, RouteHint};
+pub use onchain_address::OnchainAddress;
 
 #[derive(Debug)]
 pub struct InvestigativeFindings {

@@ -19,6 +19,17 @@ async fn main() -> Result<()> {
     let invoice_detective = InvoiceDetective::new()?;
 
     match decoded_data {
+        DecodedData::OnchainAddress(address) => {
+            println!("Address: {}", address.address);
+            println!("   Type: {}", format_option(&address.address_type));
+            let networks = address
+                .valid_networks
+                .iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<_>>()
+                .join(", ");
+            println!("Network: {networks}");
+        }
         DecodedData::Invoice(invoice) => {
             let invoice_details = InvoiceDetails::from(&invoice);
             print_invoice_details(invoice_details);
@@ -214,7 +225,8 @@ fn print_invoice_details(invoice: InvoiceDetails) {
 fn print_bip21(bip21: Bip21) {
     println!("📋 {}", " BIP 21 ".reversed());
 
-    println!("On-chain address: {}", format_option(&bip21.address));
+    let address = bip21.address.map(|a| a.address);
+    println!("On-chain address: {}", format_option(&address));
     //    params.sort();
     for param in bip21.params {
         match param {

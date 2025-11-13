@@ -12,7 +12,7 @@ use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
-use templates::Bip353OrLightningAddressTemplate;
+use templates::{Bip353OrLightningAddressTemplate, OnchainAddressTemplate};
 use tokio_stream::StreamExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -84,6 +84,7 @@ async fn parse_impl(input: &str) -> Result<String> {
     let decoded = detective::decoder::decode(input)?;
 
     match decoded {
+        DecodedData::OnchainAddress(address) => OnchainAddressTemplate { address }.render(),
         DecodedData::Offer(offer) => {
             let offer = OfferDetails::from(offer);
             OfferTemplate { offer }.render()
