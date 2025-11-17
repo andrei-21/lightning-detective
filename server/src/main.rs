@@ -172,7 +172,7 @@ async fn stylesheet() -> Response<Body> {
     Response::builder()
         .header(header::CONTENT_TYPE, "text/css; charset=utf-8")
         .body(Body::from(STYLESHEET))
-        .expect("failed to render stylesheet")
+        .expect("Failed to render stylesheet")
 }
 
 async fn app_script() -> Response<Body> {
@@ -182,5 +182,5 @@ async fn app_script() -> Response<Body> {
             "application/javascript; charset=utf-8",
         )
         .body(Body::from(APP_SCRIPT))
-        .expect("failed to render app script")
+        .expect("Failed to render app script")
 }
