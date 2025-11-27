@@ -30,6 +30,8 @@ use crate::templates::{
 
 static STYLESHEET: &str = include_str!("../static/styles.css");
 static APP_SCRIPT: &str = include_str!("../static/app.js");
+static PICO_CSS: &str = include_str!("../static/vendor/pico.min.css");
+static HTMX_SCRIPT: &str = include_str!("../static/vendor/htmx.min.js");
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -45,7 +47,9 @@ async fn main() -> Result<()> {
         .route("/", get(index))
         .route("/api/parse", post(parse))
         .route("/static/styles.css", get(stylesheet))
-        .route("/static/app.js", get(app_script));
+        .route("/static/app.js", get(app_script))
+        .route("/static/vendor/pico.min.css", get(pico_css))
+        .route("/static/vendor/htmx.min.js", get(htmx_script));
 
     let addr: SocketAddr = "0.0.0.0:3000".parse().context("Invalid bind address")?;
     tracing::info!("Listening on http://{addr}");
@@ -187,4 +191,21 @@ async fn app_script() -> Response<Body> {
         )
         .body(Body::from(APP_SCRIPT))
         .expect("Failed to render app script")
+}
+
+async fn pico_css() -> Response<Body> {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "text/css; charset=utf-8")
+        .body(Body::from(PICO_CSS))
+        .expect("Failed to render Pico CSS")
+}
+
+async fn htmx_script() -> Response<Body> {
+    Response::builder()
+        .header(
+            header::CONTENT_TYPE,
+            "application/javascript; charset=utf-8",
+        )
+        .body(Body::from(HTMX_SCRIPT))
+        .expect("Failed to render htmx script")
 }
