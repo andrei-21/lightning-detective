@@ -7,6 +7,7 @@ use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
     LightningAddress, LnUrlResponse, Node, OnchainAddress, RecipientNode, ServiceKind,
+    SilentPaymentAddress,
 };
 
 #[derive(Template)]
@@ -27,6 +28,13 @@ pub struct ErrorTemplate {
 pub struct OnchainAddressTemplate {
     pub address: OnchainAddress,
 }
+
+#[derive(Template)]
+#[template(path = "silent_payment_address.html")]
+pub struct SilentPaymentAddressTemplate {
+    pub address: SilentPaymentAddress,
+}
+
 #[derive(Template)]
 #[template(path = "offer.html")]
 pub struct OfferTemplate {

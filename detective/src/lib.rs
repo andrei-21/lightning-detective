@@ -30,6 +30,7 @@ use lightning::blinded_path::IntroductionNode;
 use lightning::offers::offer::Offer;
 use lightning_invoice::{Bolt11Invoice, RouteHint};
 pub use onchain_address::OnchainAddress;
+pub use silentpayments::SilentPaymentAddress;
 
 #[derive(Debug)]
 pub struct InvestigativeFindings {

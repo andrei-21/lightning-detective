@@ -1,0 +1,25 @@
+<article>
+  {% set name = "Silent Payment Address" %}
+  {% include "include/result-header.html" %}
+  
+  <table>
+    <tbody>
+      <tr>
+        <th scope="row"> Address </th>
+        <td>{{ address | hex }}</td>
+      </tr>
+      <tr>
+        <th scope="row"> Network </th>
+        <td>{{ address.get_network() | fmt("{:?}") }}</td>
+      </tr>
+      <tr>
+        <th scope="row"> Scan public key </th>
+        <td>{{ &address.get_scan_key() | hex }}</td>
+      </tr>
+      <tr>
+        <th scope="row"> Spend public key </th>
+        <td>{{ &address.get_spend_key() | hex }}</td>
+      </tr>
+    </tbody>
+  </table>
+</article>

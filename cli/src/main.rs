@@ -20,6 +20,7 @@ async fn main() -> Result<()> {
 
     match decoded_data {
         DecodedData::OnchainAddress(address) => {
+            println!("📋 {}", " On-Chain Address ".reversed());
             println!("Address: {}", address.address);
             println!("   Type: {}", format_option(&address.address_type));
             let networks = address
@@ -29,6 +30,12 @@ async fn main() -> Result<()> {
                 .collect::<Vec<_>>()
                 .join(", ");
             println!("Network: {networks}");
+        }
+        DecodedData::SilentPaymentAddress(address) => {
+            println!("📋 {}", " Silent Payment Address ".reversed());
+            println!("     Network: {:?}", address.get_network());
+            println!(" Scan pubkey: {}", address.get_scan_key());
+            println!("Spend pubkey: {}", address.get_spend_key());
         }
         DecodedData::Invoice(invoice) => {
             let invoice_details = InvoiceDetails::from(&invoice);

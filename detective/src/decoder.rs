@@ -4,6 +4,7 @@ use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
 use lightning_invoice::Bolt11Invoice;
 use reqwest::Url;
+use silentpayments::SilentPaymentAddress;
 use std::str::FromStr;
 
 use crate::lnurl::LightningAddress;
@@ -24,6 +25,7 @@ pub enum DecodedData {
     Bip21(Bip21),
     Bip353(HumanReadableName),
     Bip353OrLightningAddress(HumanReadableName, LightningAddress),
+    SilentPaymentAddress(SilentPaymentAddress),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -37,6 +39,8 @@ pub fn decode(input: &str) -> Result<DecodedData> {
         decode_lightning(lowercased)?
     } else if let Ok(address) = OnchainAddress::from_str(input) {
         DecodedData::OnchainAddress(address)
+    } else if let Ok(address) = SilentPaymentAddress::try_from(input) {
+        DecodedData::SilentPaymentAddress(address)
     } else if lowercased.starts_with(BITCOIN_PREFIX) {
         let bip21 = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
         DecodedData::Bip21(bip21)

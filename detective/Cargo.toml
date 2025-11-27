@@ -22,3 +22,4 @@ tokio = "1.48.0"
 tokio-stream = "0.1.15"
 bech32 = "0.11.0"
 base64 = "0.21.7"
+silentpayments = { version = "0.4.1", default-features = false }
