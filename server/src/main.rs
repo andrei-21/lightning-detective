@@ -82,11 +82,10 @@ struct Input {
 }
 
 async fn parse(Form(input): Form<Input>) -> Html<String> {
-    let html = match parse_impl(&input.text).await {
-        Ok(content) => content,
-        Err(err) => render_error(err),
-    };
-    Html(html)
+    parse_impl(&input.text)
+        .await
+        .unwrap_or_else(render_error)
+        .into()
 }
 
 async fn parse_impl(input: &str) -> Result<String> {

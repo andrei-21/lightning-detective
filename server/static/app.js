@@ -75,6 +75,15 @@
         }
     }
 
+    function pushCurrentPageToHistory() {
+        if (!window.history || typeof history.pushState !== "function") return;
+        try {
+            history.pushState(null, "", window.location.href);
+        } catch (err) {
+            console.error("Unable to push current page to history", err);
+        }
+    }
+
     async function copyToClipboard(text) {
         if (!text) return false;
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -181,6 +190,7 @@
     }
 
     document.addEventListener("htmx:beforeRequest", function () {
+        pushCurrentPageToHistory();
         setLoading(true);
         if (textarea) {
             updateAddressBar(textarea.value.trim());
