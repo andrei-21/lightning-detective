@@ -172,6 +172,9 @@ fn print_findings(findings: InvestigativeFindings) {
             .join(" → ");
         println!("     via {hint}");
     }
+    if let Some(botlz_mrh_pubkey) = findings.botlz_mrh_pubkey {
+        println!("   Boltz magic routing hint pubkey: {botlz_mrh_pubkey}");
+    }
 }
 
 fn print_invoice_details(invoice: InvoiceDetails) {

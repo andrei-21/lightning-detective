@@ -32,11 +32,14 @@ use lightning_invoice::{Bolt11Invoice, RouteHint};
 pub use onchain_address::OnchainAddress;
 pub use silentpayments::SilentPaymentAddress;
 
+const BOLTZ_MAGIC_ROUTING_HINT_CONSTANT: u64 = 596385002596073472;
+
 #[derive(Debug)]
 pub struct InvestigativeFindings {
     pub recipient: RecipientNode,
     pub payee: Node,
     pub route_hints: Vec<Vec<Node>>,
+    pub botlz_mrh_pubkey: Option<String>,
 }
 
 pub struct InvoiceDetective {
@@ -81,10 +84,21 @@ impl InvoiceDetective {
             recipient => recipient,
         };
 
+        let botlz_mrh_pubkey = invoice
+            .private_routes()
+            .iter()
+            .flat_map(|route| &route.0)
+            .find(|hint| hint.short_channel_id == BOLTZ_MAGIC_ROUTING_HINT_CONSTANT)
+            .map(|h| h.src_node_id.to_string());
+        if let Some(ref botlz_mrh_pubkey) = botlz_mrh_pubkey {
+            println!("Invoice has magic routing hint: {botlz_mrh_pubkey:?}");
+        }
+
         Ok(InvestigativeFindings {
             recipient,
             payee,
             route_hints,
+            botlz_mrh_pubkey,
         })
     }
 
@@ -101,6 +115,7 @@ impl InvoiceDetective {
                 recipient,
                 payee,
                 route_hints: Vec::new(),
+                botlz_mrh_pubkey: None,
             });
         }
 
@@ -129,6 +144,7 @@ impl InvoiceDetective {
             recipient,
             payee,
             route_hints: Vec::new(),
+            botlz_mrh_pubkey: None,
         })
     }
 

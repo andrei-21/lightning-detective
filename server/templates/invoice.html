@@ -48,6 +48,14 @@
 	</ol>
 	{% endfor %}
 	{% endif %}
+
+	{% if let Some(botlz_mrh_pubkey) = findings.botlz_mrh_pubkey %}
+	<p>
+	  Boltz magic routing hint pubkey
+	  {{ self::external_link("https://api.docs.boltz.exchange/magic-routing-hints.html#%F0%9F%AA%84-magic-routing-hints", "Boltz API doc") }}
+	  : {{ botlz_mrh_pubkey | hex }}
+	</p>
+	{% endif %}
   </div>
 
   <h5>📋 Details</h5>
