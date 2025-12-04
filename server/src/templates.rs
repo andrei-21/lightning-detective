@@ -120,6 +120,7 @@ pub fn investigate_link(payload: &String) -> Safe<String> {
 }
 
 pub fn external_link(link: &str, title: &str) -> Safe<String> {
+    let title = format!("{title}↗");
     Safe(
         HtmlElement::new(HtmlTag::Link)
             .with_attribute("href", link)
@@ -148,15 +149,15 @@ pub fn doc(term: &str) -> Safe<String> {
 }
 
 pub fn bip(id: u32) -> Safe<String> {
-    Safe(format!(
-        "<a href=\"https://bips.dev/{id}\" target=\"_blank\" rel=\"noreferrer\">BIP-{id} specification</a>"
-    ))
+    let link = format!("https://bips.dev/{id}");
+    let title = format!("BIP-{id} specification");
+    external_link(&link, &title)
 }
 
 pub fn lud(id: u32) -> Safe<String> {
-    Safe(format!(
-        "<a href=\"https://github.com/lnurl/luds/blob/luds/{id}.md\" target=\"_blank\" rel=\"noreferrer\">LUD-{id} specification</a>"
-    ))
+    let link = format!("https://github.com/lnurl/luds/blob/luds/{id}.md");
+    let title = format!("LUD-{id} specification");
+    external_link(&link, &title)
 }
 
 pub mod filters {

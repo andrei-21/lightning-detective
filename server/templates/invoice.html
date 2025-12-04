@@ -27,28 +27,30 @@
 
   <h5>🗃️ Evidences</h5>
   <div>
-	Pay to
-	{% if findings.payee.is_announced %}
-	public node <b>{{ self::explorer_link(findings.payee) }}</b>
-	{% else %}
+	<p>
+	  Pay to
+	  {% if findings.payee.is_announced %}
+	  public node <b>{{ self::explorer_link(findings.payee) }}</b>
+	  {% else %}
 
-	private node <b>{{ findings.payee.pubkey | hex }}</b>
+	  private node <b>{{ findings.payee.pubkey | hex }}</b>
 
-	{% for route in findings.route_hints %}
-	<ol start="0">
-	  {% for hop in route %}
-	  <li>
-		via
-		{% if hop.is_announced %}
-		public node <b>{{ self::explorer_link(hop) }}</b>
-		{% else %}
-		private node <b>{{ hop.pubkey | hex }}</b>
-		{% endif %}
-	  </li>
+	  {% for route in findings.route_hints %}
+	  <ol start="0">
+		{% for hop in route %}
+		<li>
+		  via
+		  {% if hop.is_announced %}
+		  public node <b>{{ self::explorer_link(hop) }}</b>
+		  {% else %}
+		  private node <b>{{ hop.pubkey | hex }}</b>
+		  {% endif %}
+		</li>
+		{% endfor %}
+	  </ol>
 	  {% endfor %}
-	</ol>
-	{% endfor %}
-	{% endif %}
+	  {% endif %}
+	</p>
 
 	{% if let Some(botlz_mrh_pubkey) = findings.botlz_mrh_pubkey %}
 	<p>
@@ -143,9 +145,7 @@
 	  {% if !invoice.fallback_addresses.is_empty() %}
 	  <tr>
 		<th scope="row">
-		  Fallbacks
-		  <mark data-tooltip="Fallback addresses might be deprecated in the near
-							  future in favor of using BIP-21 or BIP-353">deprecated</mark>
+		  Fallbacks <mark>deprecated</mark> {{ self::doc("fallbacks") }}
 		</th>
 		<td>
 		  {% for address in invoice.fallback_addresses %}
