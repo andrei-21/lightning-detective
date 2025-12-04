@@ -6,8 +6,8 @@ edition = "2021"
 default-run = "cli"
 
 [dependencies]
-anyhow = "1.0.79"
-colored = "2.1.0"
+anyhow = "1"
+colored = "3"
 detective = { path = "../detective" }
-tokio = { version = "1.36.0", features = ["rt", "macros"] }
-tokio-stream = "0.1.15"
+tokio = { version = "1.48", features = ["rt", "macros"] }
+tokio-stream = "0.1"
