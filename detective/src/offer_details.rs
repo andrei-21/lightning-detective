@@ -1,7 +1,6 @@
 use crate::chain_hash::ChainHash;
 use bitcoin::hex::DisplayHex;
 use chrono::{DateTime, Utc};
-use core::str;
 use lightning::offers::offer::{Offer, Quantity};
 use lightning::util::scid_utils::{block_from_scid, tx_index_from_scid, vout_from_scid};
 use std::fmt::Display;
@@ -20,18 +19,16 @@ impl From<lightning::offers::offer::Amount> for Amount {
                 iso4217_code,
                 amount,
             } => {
-                if let Ok(code) = str::from_utf8(&iso4217_code) {
-                    if let Some(currency) = iso_currency::Currency::from_code(code) {
-                        return Self {
-                            amount,
-                            iso4217_code: currency.code().to_string(),
-                            exponent: currency.exponent().unwrap_or(0),
-                        };
-                    }
+                if let Some(currency) = iso_currency::Currency::from_code(iso4217_code.as_str()) {
+                    return Self {
+                        amount,
+                        iso4217_code: currency.code().to_string(),
+                        exponent: currency.exponent().unwrap_or_default(),
+                    };
                 }
                 Self {
                     amount,
-                    iso4217_code: iso4217_code.as_hex().to_string(),
+                    iso4217_code: iso4217_code.to_string(),
                     exponent: 0,
                 }
             }

@@ -9,8 +9,8 @@ bitcoin = { version = "0.32.2", default-features = false, features = ["std", "ra
 bitcoin-payment-instructions = { git = "https://github.com/rust-bitcoin/bitcoin-payment-instructions.git", rev = "0324f6d" }
 chrono = "0.4.38"
 iso_currency = "0.5.1"
-lightning = { version = "0.1.5", default-features = false, features = ["std"] }
-lightning-invoice = { version = "0.33.2", features = ["std"] }
+lightning = { version = "0.2.0", default-features = false, features = ["std"] }
+lightning-invoice = { version = "0.34.0", features = ["std"] }
 lnurl-rs = { git = "https://github.com/benthecarman/lnurl-rs.git", rev = "745aea8", default-features = false }
 percent-encoding-rfc3986 = "0.1.3"
 reqwest = { version = "0.11.24", default-features = false, features = ["rustls-tls"] }
