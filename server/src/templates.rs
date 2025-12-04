@@ -18,6 +18,10 @@ pub struct IndexTemplate {
 }
 
 #[derive(Template)]
+#[template(path = "doc.html")]
+pub struct DocTemplate;
+
+#[derive(Template)]
 #[template(path = "error.html")]
 pub struct ErrorTemplate {
     pub err: Error,
@@ -137,6 +141,22 @@ pub fn sparkscan_link(spark_address: &String) -> Safe<String> {
     // TODO: Mind network.
     let link = format!("{EXPLORER_URL}/{spark_address}");
     external_link(&link, "View on Sparkscan")
+}
+
+pub fn doc(term: &str) -> Safe<String> {
+    Safe(format!("<sup><a href=\"/doc#{term}\">[doc]</a></sup>"))
+}
+
+pub fn bip(id: u32) -> Safe<String> {
+    Safe(format!(
+        "<a href=\"https://bips.dev/{id}\" target=\"_blank\" rel=\"noreferrer\">BIP-{id} specification</a>"
+    ))
+}
+
+pub fn lud(id: u32) -> Safe<String> {
+    Safe(format!(
+        "<a href=\"https://github.com/lnurl/luds/blob/luds/{id}.md\" target=\"_blank\" rel=\"noreferrer\">LUD-{id} specification</a>"
+    ))
 }
 
 pub mod filters {

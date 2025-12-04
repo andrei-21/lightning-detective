@@ -14,9 +14,6 @@ use detective::offer_details::OfferDetails;
 use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
 use serde::Deserialize;
 use std::net::SocketAddr;
-use templates::{
-    Bip353OrLightningAddressTemplate, OnchainAddressTemplate, SilentPaymentAddressTemplate,
-};
 use tokio_stream::StreamExt;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -24,8 +21,9 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod templates;
 
 use crate::templates::{
-    Bip21Template, Bip353Template, ErrorTemplate, IndexTemplate, InvoiceTemplate,
-    LightningAddressTemplate, LnurlTemplate, OfferTemplate,
+    Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, DocTemplate, ErrorTemplate,
+    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LnurlTemplate, OfferTemplate,
+    OnchainAddressTemplate, SilentPaymentAddressTemplate,
 };
 
 static STYLESHEET: &str = include_str!("../static/styles.css");
@@ -46,6 +44,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/", get(index))
         .route("/api/parse", post(parse))
+        .route("/doc", get(doc))
         .route("/static/styles.css", get(stylesheet))
         .route("/static/app.js", get(app_script))
         .route("/static/vendor/pico.min.css", get(pico_css))
@@ -78,6 +77,10 @@ async fn index(Query(params): Query<IndexQuery>) -> Html<String> {
 
     let template = IndexTemplate { request, result };
     Html(render_template(&template))
+}
+
+async fn doc() -> Html<String> {
+    Html(DocTemplate.render().unwrap())
 }
 
 #[derive(Deserialize)]

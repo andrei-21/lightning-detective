@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="/static/vendor/pico.min.css">
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  <style>
+    /* layout: left sidebar + main */
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      gap: 1.0rem;
+      align-items: start;
+    }
+
+    /* sidebar list styling */
+    .sidebar ul {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .sidebar li + li {
+      margin-top: 0.5rem;
+    }
+    .sidebar img.icon {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      margin-right: 0.6rem;
+      vertical-align: middle;
+      border-radius: 6px;
+    }
+
+    /* responsive: stack on narrow screens */
+    @media (max-width: 720px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+
+    th[scope="row"] {
+      width: 0;
+      white-space: normal;
+      vertical-align: top;
+    }
+  </style>
+</head>
+<body>
+    <header class="container">
+      <nav aria-label="Primary">
+        <ul>
+          <li>
+            <a href="/" aria-current="page"><strong>Lightning Detective</strong></a>
+          </li>
+        </ul>
+        <ul>
+          <li><a href="/#examples">Examples</a></li>
+          <li><a href="/doc">Documentation</a></li>
+		  <li>{{ self::external_link("https://github.com/andrei-21/lightning-detective", "GitHub") }}</li>
+        </ul>
+      </nav>
+    </header>
+  <main class="container">
+        <h1>Documentation</h1>
+    <div class="layout">
+      <aside class="sidebar">
+        <h4>Content</h4>
+        <ul>
+		  <li>
+			<b><a href="#bolt11">BOLT-11 Invoice</a></b>
+			<ul>
+			  <li><a href="#fallbacks">Fallback addresses</a></li>
+			</ul>
+		  </li>
+          <li><b><a href="#bolt12">BOLT-12 Offer</a></b></li>
+
+		  
+          <li><b><a href="#bip21">BIP-21 URI Scheme</a></b></li>
+          <li><b><a href="#bip352">BIP-352 Silent Payments</a></b></li>
+          <li><b><a href="#bip353">BIP-353 DNS Payment Instructions</a></b></li>
+          <li><b><a href="#onchain">On-Chain Addresses</a></b></li>
+
+          <li>
+			<b><a href="#lnurl">LNURL</a></b>
+			<ul>
+			  <li><a href="#lud16">Lightning Addresses</a></li>
+			</ul>
+		  </li>
+		  
+		</ul>
+
+      </aside>
+
+      <article>
+
+		<section>
+		  <h2 id="bolt11">BOLT-11 Invoice</h2>
+		  <p>Defined in the {{ self::external_link("https://github.com/lightning/bolts/blob/master/11-payment-encoding.md", "BOLT-11 specification") }}.</p>
+		  <p>
+			A BOLT-11 invoice is a standardized format used to request payments over the Lightning Network.
+			It is created by the recipient and contains essential payment details such as the amount,
+			a short UTF-8 description of the payment purpose (e.g., "1 cup of coffee"),	and an optional expiry time.
+			The invoice is encoded using the bech32 format, making it QR-code-friendly and human-readable,
+			with support for extensions while maintaining backward compatibility.
+		  </p>
+
+		  <h3 id="fallbacks">Fallback Addresses</h3>
+		  <p>
+			Fallback addresses might be deprecated in the near future in favor of using
+			<a href="#bip21">BIP-21</a> or <a href="#bip323">BIP-353</a>.
+			See {{ self::external_link("https://github.com/lightning/bolts/pull/1276#pullrequestreview-3108969468", "the comment from Bastien Teinturier") }}.
+		  </p>
+		</section>
+
+		<section>
+		  <h2 id="bolt12">BOLT-12 Offer</h2>
+		  <p>Defined in the {{ self::external_link("https://github.com/lightning/bolts/blob/master/12-offer-encoding.md", "BOLT-12 specification") }}.</p>
+		  <p>
+			A BOLT-12 offer is a modern payment request format for the Lightning Network.
+			It is designed as a successor to <a href="#bolt11">BOLT-11</a> invoices.
+			It acts as a reusable blueprint that a payer can use to request a specific invoice,
+			enhancing privacy and flexibility.
+			Unlike one-time BOLT-11 invoices, BOLT-12 offers can be shared publicly and used multiple times,
+			enabling features like dynamic pricing and refund metadata.
+			The offer contains minimal data, making it smaller and more efficient for QR codes.
+			It leverages onion messages and route blinding for secure, private communication between payer and payee.
+			BOLT-12 shifts the invoice creation responsibility to the payer, improving receiver privacy.
+		  </p>
+		</section>
+
+		<section>
+		  <h2 id="bip21">BIP-21 URI Scheme</h2>
+		  <p>Defined in the {{ self::bip(353) }}.</p>
+		  <p>
+			BIP-21 defines a URI scheme for making Bitcoin payments, based on RFC 3986,
+			defined in the {{ self::bip(21) }}.
+			It encodes a Bitcoin address in the path component and supports optional query parameters
+			such as amount (specified in decimal BTC), label (for the recipient's name),
+			and message (a note for the sender).
+			The format enables standardized payment requests across wallets and services,
+			and can also support extensions like Payjoin.
+			This URI structure simplifies payment initiation by bundling all necessary data into a single link.
+		  </p>
+		</section>
+		
+		<section>
+		  <h2 id="bip352">BIP-352 Silent Payments</h2>
+		  <p>Defined in the {{ self::bip(352) }}.</p>
+		</section>
+
+		<section>
+		  <h2 id="bip353">BIP-353 DNS Payment Instructions</h2>
+		  <p>Defined in the {{ self::bip(353) }}.</p>
+		  <p>
+			BIP-353 defines a method for publishing Bitcoin payment instructions via DNS,
+			enabling human-readable addresses like ₿user@domain.
+			Payment instructions are stored in DNS TXT records at the subdomain
+			<code>user.user._bitcoin-payment.domain</code>, and must be secured with DNSSEC to ensure authenticity.
+			These instructions can specify various payment types, including on-chain Bitcoin addresses,
+			<a href="#bolt11">BOLT-11</a> invoices, <a href="#bolt12">BOLT-12</a> offers.
+			When resolving a payment address, the client performs a DNS lookup and validates
+			the DNSSEC chain to securely retrieve the recipient's payment details.
+		  </p>
+		</section>
+		
+		<section>
+		  <h2 id="onchain">On-Chain Addresses</h2>
+		</section>
+		
+		<section>
+		  <h2 id="lnurl">LNURL</h2>
+		  <p>Defined in the {{ self::external_link("https://github.com/lnurl/luds", "LUD specifications") }}.</p>
+		  <h3 id="lud16">Lightning Addresses</h3>
+		  <p>Defined in the {{ self::lud(16) }}.</p>
+		</section>
+
+      </article>
+    </div>
+  </main>
+</body>
+</html>
