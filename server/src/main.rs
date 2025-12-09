@@ -30,6 +30,7 @@ static STYLESHEET: &str = include_str!("../static/styles.css");
 static APP_SCRIPT: &str = include_str!("../static/app.js");
 static PICO_CSS: &str = include_str!("../static/vendor/pico.min.css");
 static HTMX_SCRIPT: &str = include_str!("../static/vendor/htmx.min.js");
+static PAYMENT_INSTRUCTIONS: &[u8] = include_bytes!("../static/payment-instructions.png");
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -48,7 +49,11 @@ async fn main() -> Result<()> {
         .route("/static/styles.css", get(stylesheet))
         .route("/static/app.js", get(app_script))
         .route("/static/vendor/pico.min.css", get(pico_css))
-        .route("/static/vendor/htmx.min.js", get(htmx_script));
+        .route("/static/vendor/htmx.min.js", get(htmx_script))
+        .route(
+            "/static/payment-instructions.png",
+            get(payment_instructions_png),
+        );
 
     let addr: SocketAddr = "0.0.0.0:3000".parse().context("Invalid bind address")?;
     tracing::info!("Listening on http://{addr}");
@@ -211,4 +216,11 @@ async fn htmx_script() -> Response<Body> {
         )
         .body(Body::from(HTMX_SCRIPT))
         .expect("Failed to render htmx script")
+}
+
+async fn payment_instructions_png() -> Response<Body> {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "image/png")
+        .body(Body::from(PAYMENT_INSTRUCTIONS))
+        .expect("Failed to render payment instructions image")
 }

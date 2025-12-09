@@ -61,11 +61,12 @@
       </nav>
     </header>
   <main class="container">
-        <h1>Documentation</h1>
+    <h1>Documentation</h1>
     <div class="layout">
       <aside class="sidebar">
         <h4>Content</h4>
         <ul>
+          <li><b><a href="#map">Payment Instructions Map</a></b></li>
 		  <li>
 			<b><a href="#bolt11">BOLT-11 Invoice</a></b>
 			<ul>
@@ -92,6 +93,13 @@
       </aside>
 
       <article>
+		<section>
+		  <h2 id="map">Payment Instructions Map</h2>
+		  <figure>
+		    <img src="/static/payment-instructions.png" alt="Payment Instructions Map" style="width:100%;max-width:951px;">
+		    <figcaption>Overview of different payment instructions and how they relate to each other.</figcaption>
+		  </figure>
+		</section>
 
 		<section>
 		  <h2 id="bolt11">BOLT-11 Invoice</h2>
@@ -134,10 +142,9 @@
 
 		<section>
 		  <h2 id="bip21">BIP-21 URI Scheme</h2>
-		  <p>Defined in the {{ self::bip(353) }}.</p>
+		  <p>Defined in the {{ self::bip(21) }} and updated in the {{ self::bip(321) }} </p>
 		  <p>
-			BIP-21 defines a URI scheme for making Bitcoin payments, based on RFC 3986,
-			defined in the {{ self::bip(21) }}.
+			BIP-21 defines a URI scheme for making Bitcoin payments, based on RFC 3986.
 			It encodes a Bitcoin address in the path component and supports optional query parameters
 			such as amount (specified in decimal BTC), label (for the recipient's name),
 			and message (a note for the sender).
