@@ -11,7 +11,8 @@ use axum::routing::{get, post};
 use axum::Router;
 use detective::decoder::{parse_bip21, DecodedData, HumanReadableName};
 use detective::offer_details::OfferDetails;
-use detective::{resolve_bip353, resolve_lnurl, Event, InvoiceDetails};
+use detective::types::Msat;
+use detective::{resolve_bip353, resolve_lnurl, InvoiceDetails, JsonRpcEvent, LnUrlResponse};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use tokio_stream::StreamExt;
@@ -22,8 +23,8 @@ mod templates;
 
 use crate::templates::{
     Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, DocTemplate, ErrorTemplate,
-    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LnurlTemplate, OfferTemplate,
-    OnchainAddressTemplate, SilentPaymentAddressTemplate,
+    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LnurlRequestInvoiceTemplate,
+    LnurlTemplate, OfferTemplate, OnchainAddressTemplate, SilentPaymentAddressTemplate,
 };
 
 static STYLESHEET: &str = include_str!("../static/styles.css");
@@ -45,6 +46,7 @@ async fn main() -> Result<()> {
     let app = Router::new()
         .route("/", get(index))
         .route("/api/parse", post(parse))
+        .route("/api/lnurl-request-invoice", post(request_invoice))
         .route("/doc", get(doc))
         .route("/static/styles.css", get(stylesheet))
         .route("/static/app.js", get(app_script))
@@ -125,12 +127,12 @@ async fn parse_impl(input: &str) -> Result<String> {
         DecodedData::Bip353(hrn) => resolve_and_build_bip353(&hrn).await?.render(),
         DecodedData::LnUrl(lnurl) => {
             let stream = resolve_lnurl(lnurl.clone());
-            let events: Vec<Event> = stream.collect().await;
+            let events: Vec<JsonRpcEvent<LnUrlResponse>> = stream.collect().await;
             LnurlTemplate { events }.render()
         }
         DecodedData::LightningAddress(lightning_address) => {
             let stream = resolve_lnurl(lightning_address.lnurl.clone());
-            let events: Vec<Event> = stream.collect().await;
+            let events: Vec<JsonRpcEvent<LnUrlResponse>> = stream.collect().await;
             LightningAddressTemplate {
                 lightning_address,
                 events,
@@ -141,7 +143,7 @@ async fn parse_impl(input: &str) -> Result<String> {
             let bip353 = resolve_and_build_bip353(&hrn).await;
 
             let stream = resolve_lnurl(lightning_address.lnurl.clone());
-            let events: Vec<Event> = stream.collect().await;
+            let events: Vec<JsonRpcEvent<LnUrlResponse>> = stream.collect().await;
 
             Bip353OrLightningAddressTemplate {
                 bip353,
@@ -157,6 +159,29 @@ async fn parse_impl(input: &str) -> Result<String> {
         }
     }
     .map_err(Error::new)
+}
+
+#[derive(Deserialize, Debug)]
+struct LnurlRequestInvoiceInput {
+    callback: String,
+    amount: u64,
+    comment: Option<String>,
+}
+
+async fn request_invoice(Form(input): Form<LnurlRequestInvoiceInput>) -> Html<String> {
+    request_invoice_impl(input)
+        .await
+        .unwrap_or_else(render_error)
+        .into()
+}
+
+async fn request_invoice_impl(input: LnurlRequestInvoiceInput) -> Result<String> {
+    let stream = detective::request_invoice(input.callback, Msat(input.amount), input.comment);
+    let events: Vec<JsonRpcEvent<String>> = stream.collect().await;
+
+    LnurlRequestInvoiceTemplate { events }
+        .render()
+        .map_err(Error::new)
 }
 
 async fn resolve_and_build_bip353(hrn: &HumanReadableName) -> Result<Bip353Template> {

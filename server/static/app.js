@@ -189,18 +189,70 @@
         }
     }
 
-    document.addEventListener("htmx:beforeRequest", function () {
-        pushCurrentPageToHistory();
-        setLoading(true);
-        if (textarea) {
-            updateAddressBar(textarea.value.trim());
+    var LNURL_REQUEST_FORM_SELECTOR = "form[data-lnurl-request-form]";
+
+    function getLnurlRequestForm(element) {
+        if (!element || typeof element.closest !== "function") return null;
+        if (element.matches && element.matches(LNURL_REQUEST_FORM_SELECTOR)) {
+            return element;
         }
-    });
-    document.addEventListener("htmx:afterRequest", function () {
-        setLoading(false);
-    });
-    document.addEventListener("htmx:requestError", function () {
-        setLoading(false);
+        return element.closest(LNURL_REQUEST_FORM_SELECTOR);
+    }
+
+    function setLnurlRequestState(form, loading) {
+        if (!form) return;
+        var button = form.querySelector("button[type=submit]");
+        if (!button) return;
+        if (loading) {
+            button.setAttribute("aria-busy", "true");
+            button.setAttribute("data-original-text", button.textContent || "");
+            button.textContent = "Requesting ...";
+            button.disabled = true;
+        } else {
+            button.removeAttribute("aria-busy");
+            var orig = button.getAttribute("data-original-text");
+            button.textContent = orig || "Request";
+            button.removeAttribute("data-original-text");
+            button.disabled = false;
+        }
+    }
+
+    function isMainFormEvent(event) {
+        if (!event || !form) return false;
+        var src = event.detail && event.detail.elt;
+        if (!src) return false;
+        var formElement = typeof src.closest === "function" ? src.closest("form") : null;
+        return formElement === form;
+    }
+
+    function handleBeforeRequest(event) {
+        if (isMainFormEvent(event)) {
+            pushCurrentPageToHistory();
+            setLoading(true);
+            if (textarea) {
+                updateAddressBar(textarea.value.trim());
+            }
+        }
+        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
+        setLnurlRequestState(lnurlForm, true);
+    }
+
+    function handleAfterRequest(event) {
+        if (isMainFormEvent(event)) {
+            setLoading(false);
+        }
+        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
+        setLnurlRequestState(lnurlForm, false);
+    }
+
+    document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
+    document.addEventListener("htmx:afterRequest", handleAfterRequest);
+    document.addEventListener("htmx:requestError", function (event) {
+        if (isMainFormEvent(event)) {
+            setLoading(false);
+        }
+        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
+        setLnurlRequestState(lnurlForm, false);
     });
     document.addEventListener("htmx:afterSwap", function (event) {
         if (!result) return;

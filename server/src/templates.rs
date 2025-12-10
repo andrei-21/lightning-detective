@@ -5,7 +5,7 @@ use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
 use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    Bip353Result, Description, Event, FeatureFlag, InvestigativeFindings, InvoiceDetails,
+    Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, JsonRpcEvent,
     LightningAddress, LnUrlResponse, Node, OnchainAddress, RecipientNode, ServiceKind,
     SilentPaymentAddress,
 };
@@ -69,14 +69,20 @@ pub struct Bip353Template {
 #[derive(Template)]
 #[template(path = "lnurl.html")]
 pub struct LnurlTemplate {
-    pub events: Vec<Event>,
+    pub events: Vec<JsonRpcEvent<LnUrlResponse>>,
+}
+
+#[derive(Template)]
+#[template(path = "lnurl-request-invoice.html")]
+pub struct LnurlRequestInvoiceTemplate {
+    pub events: Vec<JsonRpcEvent<String>>,
 }
 
 #[derive(Template)]
 #[template(path = "lightning-address.html")]
 pub struct LightningAddressTemplate {
     pub lightning_address: LightningAddress,
-    pub events: Vec<Event>,
+    pub events: Vec<JsonRpcEvent<LnUrlResponse>>,
 }
 
 #[derive(Template)]
@@ -84,7 +90,7 @@ pub struct LightningAddressTemplate {
 pub struct Bip353OrLightningAddressTemplate {
     pub bip353: Result<Bip353Template>,
     pub lightning_address: LightningAddress,
-    pub events: Vec<Event>,
+    pub events: Vec<JsonRpcEvent<LnUrlResponse>>,
 }
 
 pub fn format_feature_flag(flag: &FeatureFlag) -> Safe<String> {

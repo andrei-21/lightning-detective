@@ -2,25 +2,25 @@
 
 {% for event in events %}
 {% match event %}
-{% when Event::Requesting with (method, url) %}
+{% when JsonRpcEvent::Requesting with (method, url) %}
 <div>{{ loop.index }}. Sending <code>{{ method }}</code> request to <code>{{ url }}</code></div>
 
-{% when Event::ResponseReceived with (status) %}
+{% when JsonRpcEvent::ResponseReceived with (status) %}
 <div>{{ loop.index }}. Response received with HTTP status <code>{{ status }}</code></div>
 
-{% when Event::ResponseBodyReceived with (body) %}
+{% when JsonRpcEvent::ResponseBodyReceived with (body) %}
 <div>{{ loop.index }}. ... with body <code>{{ body }}</code></div>
 
-{% when Event::JsonParsed with (json) %}
+{% when JsonRpcEvent::JsonParsed with (json) %}
 <div>{{ loop.index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
 
-{% when Event::Result(Ok(response)) %}
+{% when JsonRpcEvent::Result(Ok(response)) %}
 <h5>📋 LNURL Pay Response Details</h5>
+
+{% match response %}
+{% when LnUrlResponse::Pay with (pay) %}
 <table>
   <tbody>
-	{% match response %}
-
-	{% when LnUrlResponse::Pay with (pay) %}
 	<tr><th scope="row"> Sendable amount </th><td> {{ pay.sendable_amount }} </td></tr>
 	<tr><th scope="row"> Description </th><td> {{ pay.description }} </td></tr>
 	<tr><th scope="row"> Long description </th><td> {{ pay.long_description | or_empty }} </td></tr>
@@ -43,15 +43,45 @@
 	  </td>
 	</tr>
 	{% endif %}
-
-	{% when _ %}
-	TODO
-	{% endmatch %}
-
   </tbody>
 </table>
 
-{% when Event::Result(Err(err)) %}
+<details>
+  <summary role="button" class="outline"> ⬆️ Request BOLT-11 Invoice </summary>
+  <form
+    hx-post="/api/lnurl-request-invoice"
+    hx-target="#lnurl-result"
+    hx-swap="innerHTML"
+    novalidate
+    data-lnurl-request-form>
+	<input type="hidden" name="callback" value="{{ pay.callback }}" />
+	<fieldset>
+	  <label>
+		Amount in millisats {{ pay.sendable_amount }}
+		<input type="number" name="amount" value="{{ pay.sendable_amount.min().0 }}" />
+	  </label>
+	  <label>
+		{% match pay.comment_allowed %}
+		{% when Some(len) %}
+		Comment (max {{ len }} characters)
+		<input type="text" name="comment" />
+		{% when None %}
+		Comment not allowed
+		<input type="text" name="comment" disabled />
+		{% endmatch %}
+	  </label>
+	</fieldset>
+	<button type="submit" id="htmxBtn">Request</button>
+  </form>
+</details>
+<section id="lnurl-result" aria-live="polite"></section>
+
+{% when _ %}
+TODO
+{% endmatch %}
+
+
+{% when JsonRpcEvent::Result(Err(err)) %}
 {% include "error.html" %}
 
 {% endmatch %}

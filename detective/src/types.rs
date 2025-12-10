@@ -79,6 +79,17 @@ impl fmt::Display for MsatRange {
     }
 }
 
+impl MsatRange {
+    pub fn min(&self) -> Msat {
+        match self {
+            Self::Any => Msat(0),
+            Self::Between(min, _max) => *min,
+            Self::Min(min) => *min,
+            Self::Max(_max) => Msat(0),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::{Msat, MsatRange, Sat};

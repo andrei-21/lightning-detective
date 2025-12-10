@@ -2,6 +2,7 @@ use anyhow::{anyhow, bail, ensure, Context, Error, Result};
 use base64::{engine::general_purpose, Engine as _};
 use lnurl::decode_ln_url_response_from_json;
 use reqwest::{Method, StatusCode};
+use serde::Deserialize;
 use serde_json::Value;
 use std::str::FromStr;
 use std::time::Duration;
@@ -207,30 +208,79 @@ fn decode_base64(value: &str, label: &str) -> Result<Vec<u8>> {
 }
 
 #[derive(Debug)]
-pub enum Event {
+pub enum JsonRpcEvent<R> {
     Requesting(Method, String),
     ResponseReceived(StatusCode),
     ResponseBodyReceived(String),
     JsonParsed(Value),
-    Result(Result<LnUrlResponse>),
+    Result(Result<R>),
 }
 
-pub fn resolve_lnurl(lnurl: LnUrl) -> impl Stream<Item = Event> {
+pub fn resolve_lnurl(lnurl: LnUrl) -> impl Stream<Item = JsonRpcEvent<LnUrlResponse>> {
     let (tx, rx) = mpsc::channel(100);
     tokio::spawn(async move {
         let result = resolve_lnurl_impl(lnurl, tx.clone()).await;
-        let _ = tx.send(Event::Result(result)).await;
+        let _ = tx.send(JsonRpcEvent::Result(result)).await;
     });
     ReceiverStream::new(rx)
 }
 
-pub async fn resolve_lnurl_impl(
+pub fn request_invoice(
+    callback: String,
+    amount: Msat,
+    comment: Option<String>,
+) -> impl Stream<Item = JsonRpcEvent<String>> {
+    let delimiter = if callback.contains('?') { '&' } else { '?' };
+    let comment = match comment {
+        Some(comment) => format!("&comment={}", urlencoding::encode(&comment)),
+        None => String::new(),
+    };
+    let url = format!("{callback}{delimiter}amount={}{comment}", amount.0);
+    let (tx, rx) = mpsc::channel(100);
+    tokio::spawn(async move {
+        let result = request_invoice_impl(url, tx.clone()).await;
+        let _ = tx.send(JsonRpcEvent::Result(result)).await;
+    });
+    ReceiverStream::new(rx)
+}
+
+async fn request_invoice_impl(
+    url: String,
+    events: mpsc::Sender<JsonRpcEvent<String>>,
+) -> Result<String> {
+    let method = Method::GET;
+    events
+        .send(JsonRpcEvent::Requesting(method.clone(), url.clone()))
+        .await?;
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(20))
+        .build()?;
+
+    let response = client.request(method, url).send().await?;
+    let status = response.status();
+    events.send(JsonRpcEvent::ResponseReceived(status)).await?;
+
+    let body = response.text().await?;
+    events
+        .send(JsonRpcEvent::ResponseBodyReceived(body.clone()))
+        .await?;
+
+    ensure!(status.is_success(), "HTTP status is not success");
+    let json: Value = serde_json::from_str(&body)?;
+    events.send(JsonRpcEvent::JsonParsed(json.clone())).await?;
+    let invoice_response: RequestInvoiceResponse =
+        serde_json::from_value(json).context("LNURL invoice response is malformed")?;
+    Ok(invoice_response.pr)
+}
+
+async fn resolve_lnurl_impl(
     lnurl: LnUrl,
-    events: mpsc::Sender<Event>,
+    events: mpsc::Sender<JsonRpcEvent<LnUrlResponse>>,
 ) -> Result<LnUrlResponse> {
     let method = Method::GET;
     events
-        .send(Event::Requesting(method.clone(), lnurl.url.clone()))
+        .send(JsonRpcEvent::Requesting(method.clone(), lnurl.url.clone()))
         .await?;
 
     let client = reqwest::Client::builder()
@@ -239,16 +289,16 @@ pub async fn resolve_lnurl_impl(
 
     let response = client.request(method, lnurl.url).send().await?;
     let status = response.status();
-    events.send(Event::ResponseReceived(status)).await?;
+    events.send(JsonRpcEvent::ResponseReceived(status)).await?;
 
     let body = response.text().await?;
     events
-        .send(Event::ResponseBodyReceived(body.clone()))
+        .send(JsonRpcEvent::ResponseBodyReceived(body.clone()))
         .await?;
 
     ensure!(status.is_success(), "HTTP status is not success");
     let json: Value = serde_json::from_str(&body)?;
-    events.send(Event::JsonParsed(json.clone())).await?;
+    events.send(JsonRpcEvent::JsonParsed(json.clone())).await?;
 
     let response = decode_ln_url_response_from_json(json).map_err(Error::from)?;
 
@@ -276,6 +326,11 @@ pub async fn resolve_lnurl_impl(
     // let invoice_response: LnURLPayInvoice = serde_json::from_value(json)?;
     // println!("OK");
     // Ok(invoice_response.pr)
+}
+
+#[derive(Deserialize)]
+struct RequestInvoiceResponse {
+    pr: String,
 }
 
 fn response_kind(response: &lnurl::LnUrlResponse) -> LnUrlKind {

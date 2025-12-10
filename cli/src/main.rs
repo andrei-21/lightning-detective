@@ -5,7 +5,7 @@ use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    resolve_bip353, resolve_lnurl, Description, Event, Image, InvoiceDetails, LnUrlResponse,
+    resolve_bip353, resolve_lnurl, Description, Image, InvoiceDetails, JsonRpcEvent, LnUrlResponse,
 };
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
@@ -57,10 +57,12 @@ async fn main() -> Result<()> {
             let mut events = resolve_lnurl(lnurl);
             while let Some(event) = events.next().await {
                 match event {
-                    Event::Result(Ok(response)) => {
+                    JsonRpcEvent::Result(Ok(response)) => {
                         print_lnurl_details(response);
                     }
-                    Event::Result(Err(error)) => eprintln!("{}", format!("Error: {error}").red()),
+                    JsonRpcEvent::Result(Err(error)) => {
+                        eprintln!("{}", format!("Error: {error}").red())
+                    }
                     event => println!("{}", format!("{event:?}").dimmed()),
                 }
             }
