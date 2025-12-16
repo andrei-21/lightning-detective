@@ -6,60 +6,22 @@
   <link rel="stylesheet" href="/static/vendor/pico.min.css">
   <link rel="stylesheet" href="/static/styles.css">
   <script src="/static/vendor/htmx.min.js" defer></script>
-  <style>
-    /* layout: left sidebar + main */
-    .layout {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      gap: 1.0rem;
-      align-items: start;
-    }
-
-    /* sidebar list styling */
-    .sidebar ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    .sidebar li + li {
-      margin-top: 0.5rem;
-    }
-    .sidebar img.icon {
-      width: 32px;
-      height: 32px;
-      object-fit: cover;
-      margin-right: 0.6rem;
-      vertical-align: middle;
-      border-radius: 6px;
-    }
-
-    /* responsive: stack on narrow screens */
-    @media (max-width: 720px) {
-      .layout { grid-template-columns: 1fr; }
-    }
-
-    th[scope="row"] {
-      width: 0;
-      white-space: normal;
-      vertical-align: top;
-    }
-  </style>
 </head>
 <body>
-    <header class="container">
-      <nav aria-label="Primary">
-        <ul>
-          <li>
-            <a href="/" aria-current="page"><strong>Lightning Detective</strong></a>
-          </li>
-        </ul>
-        <ul>
-          <li><a href="/#examples">Examples</a></li>
-          <li><a href="/doc">Documentation</a></li>
-		  <li>{{ self::external_link("https://github.com/andrei-21/lightning-detective", "GitHub") }}</li>
-        </ul>
-      </nav>
-    </header>
+  <header class="container">
+    <nav aria-label="Primary">
+      <ul>
+        <li>
+          <a href="/" aria-current="page"><strong>Lightning Detective</strong></a>
+        </li>
+      </ul>
+      <ul>
+        <li><a href="/#examples">Examples</a></li>
+        <li><a href="/doc">Documentation</a></li>
+		<li>{{ self::external_link("https://github.com/andrei-21/lightning-detective", "GitHub") }}</li>
+      </ul>
+    </nav>
+  </header>
   <main class="container">
     <h1>Documentation</h1>
     <div class="layout">

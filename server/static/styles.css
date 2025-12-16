@@ -143,3 +143,36 @@ ol {
 mark {
     border-radius: 0.25rem;
 }
+
+/* Documentation page layout */
+.layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 1rem;
+    align-items: start;
+}
+
+.sidebar ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.sidebar li + li {
+    margin-top: 0.5rem;
+}
+
+.sidebar img.icon {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    margin-right: 0.6rem;
+    vertical-align: middle;
+    border-radius: 6px;
+}
+
+@media (max-width: 720px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
