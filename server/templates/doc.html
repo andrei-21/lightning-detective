@@ -159,6 +159,11 @@
 		<section>
 		  <h2 id="bip352">BIP-352 Silent Payments</h2>
 		  <p>Defined in the {{ self::bip(352) }}.</p>
+		  <p>
+			It is a wallet-level protocol that lets a receiver publish a single public identifier (a "silent address")
+			while every incoming payment arrives at a unique, unlinkable on-chain address —
+			with no extra on-chain notification transaction required.
+		  </p>
 		</section>
 
 		<section>
@@ -183,8 +188,17 @@
 		<section>
 		  <h2 id="lnurl">LNURL</h2>
 		  <p>Defined in the {{ self::external_link("https://github.com/lnurl/luds", "LUD specifications") }}.</p>
+		  <p>
+			LNURL is a set of conventions that let wallets fetch Lightning actions over HTTPS
+			(such as withdraw, pay, or channel requests) via a simple URL,
+			reducing the need for QR codes to contain all payment details.
+		  </p>
 		  <h3 id="lud16">Lightning Addresses</h3>
 		  <p>Defined in the {{ self::lud(16) }}.</p>
+		  <p>
+			Lightning Addresses let users share an email-like identifier (e.g., <code>name@domain</code>)
+			that resolves to an LNURL-pay endpoint, so wallets can fetch metadata and request invoices.
+		  </p>
 		</section>
 
       </article>
