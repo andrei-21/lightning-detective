@@ -64,7 +64,7 @@ button.share {
     font-style: italic;
 }
 
-.privacy-note {
+.warning-note {
     margin-bottom: calc(var(--block-spacing-vertical) * 0.3);
     padding: calc(var(--spacing) * 0.75);
     border-left: 4px solid rgba(234, 179, 8, 0.7);
@@ -75,7 +75,7 @@ button.share {
     flex-wrap: wrap;
 }
 
-.privacy-note .dismiss-note {
+.warning-note .dismiss-note {
     margin-left: auto;
 }
 
