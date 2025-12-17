@@ -161,8 +161,8 @@ pub fn bip(id: u32) -> Safe<String> {
 }
 
 pub fn lud(id: u32) -> Safe<String> {
-    let link = format!("https://github.com/lnurl/luds/blob/luds/{id}.md");
-    let title = format!("LUD-{id} specification");
+    let link = format!("https://github.com/lnurl/luds/blob/luds/{id:02}.md");
+    let title = format!("LUD-{id:02} specification");
     external_link(&link, &title)
 }
 

@@ -15,10 +15,10 @@
 <div>{{ loop.index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
 
 {% when JsonRpcEvent::Result(Ok(response)) %}
-<h5>📋 LNURL Pay Response Details</h5>
 
 {% match response %}
 {% when LnUrlResponse::Pay with (pay) %}
+<h5>📋 LNURL Pay Response Details {{ self::doc("lud06") }}</h5>
 <table>
   <tbody>
 	<tr><th scope="row"> Sendable amount </th><td> {{ pay.sendable_amount }} </td></tr>
@@ -76,6 +76,16 @@
 </details>
 <section id="lnurl-result" aria-live="polite"></section>
 
+{% when LnUrlResponse::Withdraw with (withdraw) %}
+<h5>📋 LNURL Withdraw Response Details {{ self::doc("lud03") }}</h5>
+<table>
+  <tbody>
+	<tr><th scope="row"> Withdrawable amount </th><td> {{ withdraw.amount }} </td></tr>
+	<tr><th scope="row"> Description </th><td> {{ withdraw.default_description }} </td></tr>
+	<tr><th scope="row"> Callback </th><td> {{ withdraw.callback | hex }} </td></tr>
+	<tr><th scope="row"> k1 </th><td> {{ withdraw.k1 | hex }} </td></tr>
+  </tbody>
+</table>
 {% when _ %}
 TODO
 {% endmatch %}

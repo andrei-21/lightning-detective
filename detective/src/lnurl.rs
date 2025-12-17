@@ -84,11 +84,10 @@ pub struct PayResponse {
 
 #[derive(Debug, Clone)]
 pub struct WithdrawalResponse {
+    pub amount: MsatRange,
     pub default_description: String,
     pub callback: String,
     pub k1: String,
-    pub max_withdrawable: u64,
-    pub min_withdrawable: Option<u64>,
 }
 
 #[derive(Debug, Clone)]
@@ -187,8 +186,36 @@ impl TryFrom<lnurl::pay::PayResponse> for PayResponse {
 impl TryFrom<lnurl::withdraw::WithdrawalResponse> for WithdrawalResponse {
     type Error = Error;
 
-    fn try_from(_withdraw: lnurl::withdraw::WithdrawalResponse) -> Result<Self> {
-        todo!()
+    fn try_from(withdraw: lnurl::withdraw::WithdrawalResponse) -> Result<Self> {
+        ensure!(
+            matches!(withdraw.tag, lnurl::Tag::WithdrawRequest),
+            "LNURL withdraw tag must be withdrawRequest"
+        );
+        ensure!(
+            !withdraw.default_description.is_empty(),
+            "LNURL withdraw defaultDescription must not be empty"
+        );
+        ensure!(
+            !withdraw.callback.is_empty(),
+            "LNURL withdraw callback must not be empty"
+        );
+        ensure!(
+            !withdraw.k1.is_empty(),
+            "LNURL withdraw k1 must not be empty"
+        );
+
+        let min_withdrawable = withdraw.min_withdrawable.unwrap_or(0);
+        ensure!(
+            min_withdrawable <= withdraw.max_withdrawable,
+            "LNURL withdraw maxWithdrawable must be greater than or equal to minWithdrawable"
+        );
+
+        Ok(Self {
+            amount: MsatRange::Between(Msat(min_withdrawable), Msat(withdraw.max_withdrawable)),
+            default_description: withdraw.default_description,
+            callback: withdraw.callback,
+            k1: withdraw.k1,
+        })
     }
 }
 
@@ -310,22 +337,6 @@ async fn resolve_lnurl_impl(
         );
     }
     response.try_into()
-
-    // let symbol = if pay.callback.contains('?') { '&' } else { '?' };
-    // let url = format!("{}{symbol}amount={}", pay.callback, pay.min_sendable);
-    // println!("Querying {url}");
-    // let response = client.get(&url).send().await?;
-    // let text = response.error_for_status()?.text().await?;
-    // println!("Response: {text}");
-    // print!("Decoding as JSON: ");
-    // let _ = io::stdout().flush();
-    // let json: serde_json::Value = serde_json::from_str(&text)?;
-    // println!("OK");
-    // print!("Decoding as LNURL pay invoice response: ");
-    // let _ = io::stdout().flush();
-    // let invoice_response: LnURLPayInvoice = serde_json::from_value(json)?;
-    // println!("OK");
-    // Ok(invoice_response.pr)
 }
 
 #[derive(Deserialize)]
