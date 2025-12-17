@@ -3,6 +3,7 @@
 mod bip353;
 mod chain_hash;
 pub mod decoder;
+mod features;
 mod graph_database;
 mod invoice_details;
 mod lnurl;
@@ -14,9 +15,10 @@ mod spark;
 pub mod types;
 
 pub use crate::bip353::{resolve_bip353, Bip353Result};
+pub use crate::features::{Feature, FeatureFlag, Features};
 use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
-    Description, FeatureFlag, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
+    Description, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
 pub use crate::lnurl::{
     request_invoice, resolve_lnurl, Image, JsonRpcEvent, LightningAddress, LnUrlResponse,

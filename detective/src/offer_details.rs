@@ -1,4 +1,5 @@
 use crate::chain_hash::ChainHash;
+use crate::features::Features;
 use bitcoin::hex::DisplayHex;
 use chrono::{DateTime, Utc};
 use lightning::offers::offer::{Offer, Quantity};
@@ -74,6 +75,7 @@ pub struct OfferDetails {
     pub expires_at: Option<DateTime<Utc>>,
     pub has_expired: bool,
     pub metadata: Option<String>,
+    pub features: Features,
     pub signing_pubkey: Option<String>,
     pub paths: Vec<BlindedPath>,
 }
@@ -183,6 +185,7 @@ impl From<Offer> for OfferDetails {
             .map(|d| DateTime::from_timestamp(d.as_secs() as i64, 0).unwrap());
         let has_expired = offer.is_expired();
         let metadata = offer.metadata().map(|s| s.as_hex().to_string());
+        let features = offer.offer_features().into();
 
         let signing_pubkey = offer.issuer_signing_pubkey().map(|k| k.to_string());
         let paths = offer.paths().iter().map(BlindedPath::from).collect();
@@ -197,6 +200,7 @@ impl From<Offer> for OfferDetails {
             expires_at,
             has_expired,
             metadata,
+            features,
             signing_pubkey,
             paths,
         }

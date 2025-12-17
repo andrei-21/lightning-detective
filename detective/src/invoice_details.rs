@@ -1,15 +1,9 @@
+use crate::features::Features;
 use crate::types::{Msat, MsatRange};
 use chrono::{DateTime, Utc};
 use lightning_invoice::{Bolt11Invoice, Bolt11InvoiceDescriptionRef, RouteHint, RouteHintHop};
 use std::fmt::Write;
 use std::time::Duration;
-
-#[derive(Debug)]
-pub enum FeatureFlag {
-    Required,
-    Supported,
-    NotSupported,
-}
 
 #[derive(Debug, Default)]
 pub struct InvoiceDetails {
@@ -19,7 +13,7 @@ pub struct InvoiceDetails {
     pub payment_hash: String,
     pub payment_secret: String,
     pub payment_metadata: Option<String>,
-    pub features: Option<Vec<(String, FeatureFlag)>>,
+    pub features: Features,
     pub created_at: DateTime<Utc>,
     pub expiry: String,
     pub has_expired: bool,
@@ -92,25 +86,6 @@ fn format_proportional(ppm: u32) -> String {
     format!("{percents}.{fraction}%")
 }
 
-fn to_features(features: String) -> Vec<(String, FeatureFlag)> {
-    let mut result = Vec::new();
-    for feature in features.split(", ") {
-        let (feature, flag) = feature.split_once(": ").unwrap();
-        if feature == "unknown flags" {
-            // TODO: Handle.
-            continue;
-        }
-        let flag = match flag {
-            "required" => FeatureFlag::Required,
-            "supported" => FeatureFlag::Supported,
-            "not supported" => FeatureFlag::NotSupported,
-            flag => panic!("Unsupported {flag}"),
-        };
-        result.push((feature.to_string(), flag));
-    }
-    result
-}
-
 #[derive(Debug)]
 pub enum Description {
     Direct(String),
@@ -136,7 +111,7 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
         let payment_hash = invoice.payment_hash().to_string();
         let payment_secret = invoice.payment_secret().to_string();
         let payment_metadata = invoice.payment_metadata().map(to_lower_hex);
-        let features = invoice.features().map(|f| to_features(f.to_string()));
+        let features = invoice.features().map(Features::from).unwrap_or_default();
         let created_at = invoice.timestamp().into();
         let expiry = format_duration(&invoice.expiry_time());
         let has_expired = invoice.is_expired();

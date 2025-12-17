@@ -144,6 +144,16 @@ fn print_offer_details(d: OfferDetails) {
     let expires_at = d.expires_at.map(|d| d.to_rfc2822());
     println!(" Expires at: {}", format_option(&expires_at));
     println!("   Metadata: {}", format_option(&d.metadata));
+    println!("   Features: {}", format_option(&d.features.hex));
+    let features = d
+        .features
+        .features
+        .iter()
+        .map(|(name, flag)| format!("             {name}: {flag:?}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    println!("{features}");
+
     for (i, path) in d.paths.iter().enumerate() {
         println!(
             "   Paths #{i}: Intro {}",
@@ -226,7 +236,15 @@ fn print_invoice_details(invoice: InvoiceDetails) {
     } else {
         println!("        Routes: {}", "todo".red().bold());
     }
-    println!("      Features: {}", "todo".red().bold());
+    println!("      Features: {}", format_option(&invoice.features.hex));
+    let features = invoice
+        .features
+        .features
+        .iter()
+        .map(|(name, flag)| format!("             {name}: {flag:?}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    println!("{features}");
     if !invoice.fallback_addresses.is_empty() {
         println!("     Fallbacks: {}", "todo".red().bold());
         println!("                {}", " deprecated ".reversed().yellow());

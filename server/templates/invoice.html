@@ -124,21 +124,16 @@
 	  </tr>
 	  {% endif %}
 
-
 	  <tr>
 		<th scope="row"> Features </th>
 		<td>
-		  {% match invoice.features %}
-		  {% when Some with (features) %}
+		  {{ invoice.features.hex | or_empty_hex }}
 		  <div class="grid-like">
-			{% for feature in features %}
+			{% for feature in invoice.features.features %}
 			<span> {{ feature.0 }} </span>
 			<span> {{ self::format_feature_flag(feature.1) }} </span>
 			{% endfor %}
 		  </div>
-		  {% when None %}
-		  {{ self::mute("empty") }}
-		  {% endmatch %}
 		</td>
 	  </tr>
 
