@@ -13,6 +13,10 @@ use tokio_stream::StreamExt;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::Builder::from_default_env()
+        .format_timestamp_millis()
+        .init();
+
     let input = env::args().nth(1).ok_or(anyhow!("Input is required"))?;
     let decoded_data = decode(&input)?;
 
