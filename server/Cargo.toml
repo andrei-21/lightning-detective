@@ -8,6 +8,7 @@ anyhow = "1"
 askama = "0.14"
 axum = { version = "0.8", features = ["json"] }
 build_html = "2"
+bitcoin = { version = "0.32", default-features = false, features = ["std"] }
 detective = { path = "../detective" }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["std"] }

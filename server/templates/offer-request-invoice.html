@@ -1,0 +1,45 @@
+<h5>🧅 Requesting</h5>
+
+{% for event in events %}
+{% match event %}
+{% when OnionEvent::Resolving with (address) %}
+<div>{{ loop.index }}. Resolving node with pubkey <code>{{ address }}</code></div>
+
+{% when OnionEvent::Resolved with (addresses) %}
+<div>
+  {{ loop.index }}. Resolved to
+  {% for address in addresses %}
+  <code>{{ address }}</code>{% if !loop.last %}, {% endif %}
+  {% endfor %}
+</div>
+
+{% when OnionEvent::Connecting with (node_id) %}
+<div>{{ loop.index }}. Connecting to <code>{{ node_id }}</code></div>
+
+{% when OnionEvent::ConnectionError with (err) %}
+<div>{{ loop.index }}. Connection error <code>{{ err }}</code></div>
+
+{% when OnionEvent::Connected %}
+<div>{{ loop.index }}. Connected</div>
+
+{% when OnionEvent::SendingOnion %}
+<div>{{ loop.index }}. Sending onion message</div>
+
+{% when OnionEvent::OnionSent %}
+<div>{{ loop.index }}. Onion message sent</div>
+
+{% when OnionEvent::ConnectionNeeded with (node_id) %}
+<div>{{ loop.index }}. Connection needed for <code>{{ node_id }}</code></div>
+
+{% when OnionEvent::Result(Ok(invoice)) %}
+<h5>🧾 Invoice</h5>
+<div>
+  {{ invoice | hex }}
+  <br>
+  {{ self::investigate_link(invoice) }}
+</div>
+
+{% when OnionEvent::Result(Err(err)) %}
+{% include "error.html" %}
+{% endmatch %}
+{% endfor %}

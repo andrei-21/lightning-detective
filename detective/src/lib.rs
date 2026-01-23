@@ -21,6 +21,7 @@ use crate::graph_database::GraphDatabase;
 pub use crate::invoice_details::{
     Description, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
+pub use crate::ldk_node::{request_bolt12_invoice, OnionEvent, PayOfferParams};
 pub use crate::lnurl::{
     request_invoice, resolve_lnurl, Image, JsonRpcEvent, LightningAddress, LnUrlResponse,
     PayResponse,
@@ -31,39 +32,14 @@ pub use crate::recipient::{RecipientNode, ServiceKind};
 use crate::spark::detect_spark_address;
 use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
-use bitcoin::Network;
-use ldk_node::{Bolt12InvoiceResponse, LdkNode, LdkNodeConfig, PayOfferParams};
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
 use lightning::offers::offer::Offer;
 use lightning_invoice::{Bolt11Invoice, RouteHint};
-use log::debug;
 pub use onchain_address::OnchainAddress;
 pub use silentpayments::SilentPaymentAddress;
 
 const BOLTZ_MAGIC_ROUTING_HINT_CONSTANT: u64 = 596385002596073472;
-
-pub async fn request_bolt12_invoice(
-    offer: &Offer,
-    params: PayOfferParams,
-) -> Result<Bolt12InvoiceResponse> {
-    let seed = [42u8; 32];
-    let config = LdkNodeConfig {
-        network: Network::Bitcoin,
-        seed,
-        inbound_payment_key: seed,
-        peer_manager_ephemeral_random_data: seed,
-    };
-    debug!("Building LDK node ...");
-    let node = LdkNode::new(config);
-    debug!("LDK node built");
-
-    debug!("Starging LDK node");
-    node.start().await?;
-    debug!("LDK node started");
-
-    node.request_invoice(offer, params).await
-}
 
 #[derive(Debug)]
 pub struct InvestigativeFindings {

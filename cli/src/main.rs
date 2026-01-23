@@ -6,6 +6,7 @@ use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     resolve_bip353, resolve_lnurl, Description, Image, InvoiceDetails, JsonRpcEvent, LnUrlResponse,
+    PayOfferParams,
 };
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
@@ -50,8 +51,16 @@ async fn main() -> Result<()> {
         DecodedData::Offer(offer) => {
             let offer_details = OfferDetails::from(offer.clone());
             print_offer_details(offer_details);
-            let findings = invoice_detective.investigate_bolt12(offer)?;
-            print_findings(findings)
+            let params = PayOfferParams {
+                amount_msats: Some(100),
+                ..Default::default()
+            };
+            let mut events = detective::request_bolt12_invoice(offer, params).await;
+            while let Some(event) = events.next().await {
+                println!("{event:?}");
+            }
+            // let findings = invoice_detective.investigate_bolt12(offer)?;
+            // print_findings(findings)
         }
         DecodedData::Refund(refund) => {
             println!("{refund:?}")

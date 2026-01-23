@@ -78,4 +78,41 @@
 	  </tr>
 	</tbody>
   </table>
+
+  <details>
+	<summary role="button" class="outline"> ⬆️ Request BOLT-12 Invoice </summary>
+	<form
+	  hx-post="/api/offer-request-invoice"
+	  hx-target="#offer-result"
+	  hx-swap="innerHTML"
+	  novalidate
+	  data-offer-request-form>
+	  <input type="hidden" name="offer" value="{{ offer.raw_offer }}" />
+	  <fieldset>
+		<label>
+		  Amount
+		  {% match offer.amount %}
+		  {% when Some with (amount) %}
+		  <input type="text" value="{{ amount }}" disabled />
+		  {% when None %}
+		  <input type="number" name="amount_msats" placeholder="amount in millisats" />
+		  {% endmatch %}
+		</label>
+		<label>
+		  Quantity ({{ offer.supported_quantity }})
+		  {% if offer.supported_quantity == "One" %}
+		  <input type="number" value="1" disabled />
+		  {% else %}
+		  <input type="number" name="quantity" min="1" />
+		  {% endif %}
+		</label>
+		<label>
+		  Payer note (optional)
+		  <input type="text" name="payer_note" />
+		</label>
+	  </fieldset>
+	  <button type="submit" id="htmxBtn">Request</button>
+	</form>
+  </details>
+  <section id="offer-result" aria-live="polite"></section>
 </article>

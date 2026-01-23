@@ -67,6 +67,7 @@ impl Display for Amount {
 #[derive(Debug)]
 pub struct OfferDetails {
     pub id: String,
+    pub raw_offer: String,
     pub chains: Vec<String>,
     pub amount: Option<Amount>,
     pub supported_quantity: String,
@@ -164,6 +165,7 @@ impl From<&lightning::blinded_path::message::BlindedMessagePath> for BlindedPath
 
 impl From<Offer> for OfferDetails {
     fn from(offer: Offer) -> Self {
+        let raw_offer = offer.to_string();
         let mut chains = offer
             .chains()
             .into_iter()
@@ -192,6 +194,7 @@ impl From<Offer> for OfferDetails {
 
         Self {
             id: offer.id().0.as_hex().to_string(),
+            raw_offer,
             chains,
             amount,
             supported_quantity,

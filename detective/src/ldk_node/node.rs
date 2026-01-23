@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use anyhow::{anyhow, bail, ensure, Result};
+use anyhow::{anyhow, bail, ensure, Error, Result};
 use bitcoin::constants::ChainHash;
 use bitcoin::key::Secp256k1;
 use bitcoin::network::Network;
@@ -28,8 +28,9 @@ use lightning::sign::KeysManager;
 use lightning::util::logger::{Level, Logger, Record};
 use lightning_net_tokio::setup_outbound;
 use lightning_rapid_gossip_sync::RapidGossipSync;
-use log::{debug, warn, RecordBuilder};
+use log::{debug, RecordBuilder};
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::time::{sleep, Instant};
 
 use super::offers_handler::{Bolt12InvoiceResponse, OffersHandler};
@@ -94,6 +95,18 @@ pub struct PayOfferParams {
     pub payer_note: Option<String>,
 }
 
+impl Default for PayOfferParams {
+    fn default() -> Self {
+        Self {
+            chain: ChainHash::BITCOIN,
+            blinded_path_index: 0,
+            amount_msats: None,
+            quantity: None,
+            payer_note: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct LdkNodeConfig {
     pub network: Network,
@@ -102,7 +115,22 @@ pub struct LdkNodeConfig {
     pub peer_manager_ephemeral_random_data: [u8; 32],
 }
 
+#[derive(Debug)]
+pub enum OnionEvent {
+    Resolving(String),
+    Resolved(Vec<String>),
+    Connecting(String),
+    ConnectionError(Error),
+    Connected,
+    SendingOnion,
+    OnionSent,
+    ConnectionNeeded(String),
+    Result(Result<String>),
+    //    Result(Box<Result<Bolt12InvoiceResponse>>),
+}
+
 pub struct LdkNode {
+    events: mpsc::Sender<OnionEvent>,
     pub network: Network,
     pub keys_manager: Arc<KeysManager>,
     pub inbound_payment_key: ExpandedKey,
@@ -114,7 +142,7 @@ pub struct LdkNode {
 }
 
 impl LdkNode {
-    pub fn new(config: LdkNodeConfig) -> Self {
+    pub fn new(config: LdkNodeConfig, events: mpsc::Sender<OnionEvent>) -> Self {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default();
@@ -174,6 +202,7 @@ impl LdkNode {
         ));
 
         Self {
+            events,
             network: config.network,
             keys_manager,
             inbound_payment_key,
@@ -189,7 +218,6 @@ impl LdkNode {
         const TIMEOUT: Duration = Duration::from_mins(1);
         let _ = self.update_network_graph().await?;
 
-        debug!("Connecting to ACINQ node");
         let acinq = PublicKey::from_str(
             "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
         )?;
@@ -266,18 +294,22 @@ impl LdkNode {
 
         let response_rx = self.offers_handler.register(payment_id)?;
 
-        debug!("Sending onion message ...");
+        self.events.send(OnionEvent::SendingOnion).await?;
+
         let result = self
             .onion_messenger
             .send_onion_message(message, instructions);
-        debug!("Result {result:?}");
         match result {
             Ok(SendSuccess::Buffered) => (),
             Ok(SendSuccess::BufferedAwaitingConnection(pubkey)) => {
+                self.events
+                    .send(OnionEvent::ConnectionNeeded(pubkey.to_string()))
+                    .await?;
                 self.resolve_and_connect(pubkey).await?;
             }
             Err(e) => bail!("Failed to send onion message: {e:?}"),
         };
+        self.events.send(OnionEvent::OnionSent).await?;
 
         let response = response_rx
             .await
@@ -287,27 +319,40 @@ impl LdkNode {
     }
 
     async fn resolve_and_connect(&self, pubkey: PublicKey) -> Result<()> {
-        debug!("Resolving pubkey {pubkey} ...");
-        let addresses = self
+        self.events
+            .send(OnionEvent::Resolving(pubkey.to_string()))
+            .await?;
+        let addresses: Vec<_> = self
             .network_graph
             .read_only()
             .get_addresses(&pubkey)
             .ok_or(anyhow!("Introduction node is not public"))?
             .into_iter()
-            .filter_map(to_socket_addr);
-        debug!("Resolved");
+            .filter_map(to_socket_addr)
+            .collect();
+        let addresses_strings = addresses.iter().map(SocketAddr::to_string).collect();
+        self.events
+            .send(OnionEvent::Resolved(addresses_strings))
+            .await?;
 
         for address in addresses {
+            self.events
+                .send(OnionEvent::Connecting(address.to_string()))
+                .await?;
             match self.connect_peer(pubkey, &address).await {
-                Ok(()) => return Ok(()),
-                Err(e) => warn!("Failed to connect: {e}"),
+                Ok(()) => {
+                    self.events.send(OnionEvent::Connected).await?;
+                    return Ok(());
+                }
+                Err(e) => {
+                    self.events.send(OnionEvent::ConnectionError(e)).await?;
+                }
             }
         }
-        bail!("All attempts failed");
+        bail!("All connection attempts failed");
     }
 
     async fn connect_peer(&self, pubkey: PublicKey, addr: &SocketAddr) -> Result<()> {
-        debug!("Connecting to {addr} ...");
         let connect_fut = async {
             TcpStream::connect(addr)
                 .await
@@ -316,7 +361,6 @@ impl LdkNode {
         match tokio::time::timeout(Duration::from_secs(10), connect_fut).await {
             Ok(stream) => {
                 let stream = stream?;
-                debug!("Connected");
                 let _disconnect_future =
                     setup_outbound(Arc::clone(&self.peer_manager), pubkey, stream);
                 Ok(())

@@ -6,7 +6,7 @@ use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, JsonRpcEvent,
-    LightningAddress, LnUrlResponse, Node, OnchainAddress, RecipientNode, ServiceKind,
+    LightningAddress, LnUrlResponse, Node, OnchainAddress, OnionEvent, RecipientNode, ServiceKind,
     SilentPaymentAddress,
 };
 
@@ -76,6 +76,12 @@ pub struct LnurlTemplate {
 #[template(path = "lnurl-request-invoice.html")]
 pub struct LnurlRequestInvoiceTemplate {
     pub events: Vec<JsonRpcEvent<String>>,
+}
+
+#[derive(Template)]
+#[template(path = "offer-request-invoice.html")]
+pub struct OfferRequestInvoiceTemplate {
+    pub events: Vec<OnionEvent>,
 }
 
 #[derive(Template)]

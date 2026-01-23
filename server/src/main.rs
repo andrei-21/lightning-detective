@@ -1,6 +1,6 @@
 #![warn(unused_crate_dependencies)]
 
-use anyhow::{anyhow, Context, Error, Result};
+use anyhow::{anyhow, bail, Context, Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use axum::body::Body;
@@ -9,10 +9,14 @@ use axum::http::{header, Response};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::Router;
+use bitcoin::constants::ChainHash;
 use detective::decoder::{parse_bip21, DecodedData, HumanReadableName};
 use detective::offer_details::OfferDetails;
 use detective::types::Msat;
-use detective::{resolve_bip353, resolve_lnurl, InvoiceDetails, JsonRpcEvent, LnUrlResponse};
+use detective::{
+    resolve_bip353, resolve_lnurl, InvoiceDetails, JsonRpcEvent, LnUrlResponse, OnionEvent,
+    PayOfferParams,
+};
 use serde::Deserialize;
 use std::net::SocketAddr;
 use tokio_stream::StreamExt;
@@ -24,7 +28,8 @@ mod templates;
 use crate::templates::{
     Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, DocTemplate, ErrorTemplate,
     IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LnurlRequestInvoiceTemplate,
-    LnurlTemplate, OfferTemplate, OnchainAddressTemplate, SilentPaymentAddressTemplate,
+    LnurlTemplate, OfferRequestInvoiceTemplate, OfferTemplate, OnchainAddressTemplate,
+    SilentPaymentAddressTemplate,
 };
 
 static STYLESHEET: &str = include_str!("../static/styles.css");
@@ -47,6 +52,7 @@ async fn main() -> Result<()> {
         .route("/", get(index))
         .route("/api/parse", post(parse))
         .route("/api/lnurl-request-invoice", post(request_invoice))
+        .route("/api/offer-request-invoice", post(request_offer_invoice))
         .route("/doc", get(doc))
         .route("/static/styles.css", get(stylesheet))
         .route("/static/app.js", get(app_script))
@@ -180,6 +186,49 @@ async fn request_invoice_impl(input: LnurlRequestInvoiceInput) -> Result<String>
     let events: Vec<JsonRpcEvent<String>> = stream.collect().await;
 
     LnurlRequestInvoiceTemplate { events }
+        .render()
+        .map_err(Error::new)
+}
+
+#[derive(Deserialize, Debug)]
+struct OfferRequestInvoiceInput {
+    offer: String,
+    amount_msats: Option<u64>,
+    quantity: Option<u64>,
+    payer_note: Option<String>,
+}
+
+async fn request_offer_invoice(Form(input): Form<OfferRequestInvoiceInput>) -> Html<String> {
+    request_offer_invoice_impl(input)
+        .await
+        .unwrap_or_else(render_error)
+        .into()
+}
+
+async fn request_offer_invoice_impl(input: OfferRequestInvoiceInput) -> Result<String> {
+    let decoded = detective::decoder::decode(&input.offer)?;
+    let offer = match decoded {
+        DecodedData::Offer(offer) => offer,
+        _ => bail!("Input is not a BOLT-12 offer"),
+    };
+
+    let chain = offer
+        .chains()
+        .first()
+        .copied()
+        .unwrap_or(ChainHash::BITCOIN);
+    let params = PayOfferParams {
+        chain,
+        blinded_path_index: 0,
+        amount_msats: input.amount_msats,
+        quantity: input.quantity,
+        payer_note: input.payer_note,
+    };
+
+    let stream = detective::request_bolt12_invoice(offer, params).await;
+    let events: Vec<OnionEvent> = stream.collect().await;
+
+    OfferRequestInvoiceTemplate { events }
         .render()
         .map_err(Error::new)
 }
