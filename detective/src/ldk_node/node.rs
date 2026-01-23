@@ -1,4 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -371,19 +372,34 @@ impl LdkNode {
 
     async fn update_network_graph(&self) -> Result<u32> {
         const RGS_URL: &str = "https://rapidsync.lightningdevkit.org/v2";
+        const RGS_CACHE_PATH: &str = "/tmp/ldk-rgs-0.bin";
         let url = format!("{RGS_URL}/0.bin");
+        let cache_path = Path::new(RGS_CACHE_PATH);
 
-        debug!("Fetching RGS snapshot {url}");
-        let response = reqwest::get(url)
-            .await
-            .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?
-            .error_for_status()
-            .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?;
+        let snapshot_bytes = if let Some(bytes) = read_cached_rgs_snapshot(cache_path) {
+            debug!("Using cached RGS snapshot at {}", cache_path.display());
+            bytes
+        } else {
+            debug!("Fetching RGS snapshot {url}");
+            let response = reqwest::get(url)
+                .await
+                .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?
+                .error_for_status()
+                .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?;
 
-        let snapshot_bytes = response
-            .bytes()
-            .await
-            .map_err(|e| anyhow!("Failed to read RGS snapshot body: {e}"))?;
+            let snapshot_bytes = response
+                .bytes()
+                .await
+                .map_err(|e| anyhow!("Failed to read RGS snapshot body: {e}"))?
+                .to_vec();
+            if let Err(e) = std::fs::write(cache_path, &snapshot_bytes) {
+                debug!(
+                    "Failed to write RGS snapshot cache at {}: {e}",
+                    cache_path.display()
+                );
+            }
+            snapshot_bytes
+        };
 
         debug!("Applying RGS snapshot");
         self.rapid_gossip_sync
@@ -401,5 +417,24 @@ fn to_socket_addr(addr: SocketAddress) -> Option<SocketAddr> {
             Some(SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr)), port))
         }
         _ => None,
+    }
+}
+
+fn read_cached_rgs_snapshot(cache_path: &Path) -> Option<Vec<u8>> {
+    let metadata = std::fs::metadata(cache_path).ok()?;
+    let modified = metadata.modified().ok()?;
+    let age = SystemTime::now().duration_since(modified).ok()?;
+    if age > Duration::from_secs(60 * 60 * 24) {
+        return None;
+    }
+    match std::fs::read(cache_path) {
+        Ok(bytes) => Some(bytes),
+        Err(e) => {
+            debug!(
+                "Failed to read RGS snapshot cache at {}: {e}",
+                cache_path.display()
+            );
+            None
+        }
     }
 }
