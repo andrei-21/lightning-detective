@@ -85,17 +85,16 @@
 	  hx-post="/api/offer-request-invoice"
 	  hx-target="#offer-result"
 	  hx-swap="innerHTML"
-	  novalidate
-	  data-offer-request-form>
+	  data-request-form>
 	  <input type="hidden" name="offer" value="{{ offer.raw_offer }}" />
 	  <fieldset>
 		<label>
-		  Amount
+		  Amount in millisats
 		  {% match offer.amount %}
 		  {% when Some with (amount) %}
 		  <input type="text" value="{{ amount }}" disabled />
 		  {% when None %}
-		  <input type="number" name="amount_msats" placeholder="amount in millisats" />
+		  <input type="number" name="amount_msats" required />
 		  {% endmatch %}
 		</label>
 		<label>
@@ -103,7 +102,7 @@
 		  {% if offer.supported_quantity == "One" %}
 		  <input type="number" value="1" disabled />
 		  {% else %}
-		  <input type="number" name="quantity" min="1" />
+		  <input type="number" name="quantity" min="1" required />
 		  {% endif %}
 		</label>
 		<label>

@@ -1,9 +1,20 @@
-<h5>🧅 Requesting</h5>
+<h5>🌐 Requesting</h5>
 
 {% for event in events %}
 {% match event %}
-{% when OnionEvent::Resolving with (address) %}
-<div>{{ loop.index }}. Resolving node with pubkey <code>{{ address }}</code></div>
+{% when OnionEvent::Resolving with (introduction_node) %}
+
+<div>
+  {{ loop.index }}. Resolving node:
+  {% match introduction_node %}
+  {% when IntroductionNode::NodeId with (pubkey) %}
+  <code> {{ pubkey }} </code>
+  {% when IntroductionNode::LeftEnd with (channel) %}
+  <b>Left</b> end of <code> {{ channel }} </code>
+  {% when IntroductionNode::RightEnd with (channel) %}
+  <b>Right</b> end of <code> {{ channel }} </code>
+  {% endmatch %}
+</div>
 
 {% when OnionEvent::Resolved with (addresses) %}
 <div>

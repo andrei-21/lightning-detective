@@ -189,17 +189,17 @@
         }
     }
 
-    var LNURL_REQUEST_FORM_SELECTOR = "form[data-lnurl-request-form]";
+    var REQUEST_FORM_SELECTOR = "form[data-request-form]";
 
-    function getLnurlRequestForm(element) {
+    function getRequestForm(element) {
         if (!element || typeof element.closest !== "function") return null;
-        if (element.matches && element.matches(LNURL_REQUEST_FORM_SELECTOR)) {
+        if (element.matches && element.matches(REQUEST_FORM_SELECTOR)) {
             return element;
         }
-        return element.closest(LNURL_REQUEST_FORM_SELECTOR);
+        return element.closest(REQUEST_FORM_SELECTOR);
     }
 
-    function setLnurlRequestState(form, loading) {
+    function setRequestState(form, loading) {
         if (!form) return;
         var button = form.querySelector("button[type=submit]");
         if (!button) return;
@@ -233,16 +233,16 @@
                 updateAddressBar(textarea.value.trim());
             }
         }
-        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
-        setLnurlRequestState(lnurlForm, true);
+        var requestForm = getRequestForm(event.detail && event.detail.elt);
+        setRequestState(requestForm, true);
     }
 
     function handleAfterRequest(event) {
         if (isMainFormEvent(event)) {
             setLoading(false);
         }
-        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
-        setLnurlRequestState(lnurlForm, false);
+        var requestForm = getRequestForm(event.detail && event.detail.elt);
+        setRequestState(requestForm, false);
     }
 
     document.addEventListener("htmx:beforeRequest", handleBeforeRequest);
@@ -251,8 +251,8 @@
         if (isMainFormEvent(event)) {
             setLoading(false);
         }
-        var lnurlForm = getLnurlRequestForm(event.detail && event.detail.elt);
-        setLnurlRequestState(lnurlForm, false);
+        var requestForm = getRequestForm(event.detail && event.detail.elt);
+        setRequestState(requestForm, false);
     });
     document.addEventListener("htmx:afterSwap", function (event) {
         if (!result) return;

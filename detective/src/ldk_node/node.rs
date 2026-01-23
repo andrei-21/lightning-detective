@@ -1,6 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::path::Path;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -10,7 +9,7 @@ use bitcoin::key::Secp256k1;
 use bitcoin::network::Network;
 use bitcoin::secp256k1::PublicKey;
 use lightning::blinded_path::message::{MessageContext, OffersContext};
-use lightning::blinded_path::EmptyNodeIdLookUp;
+use lightning::blinded_path::{Direction, EmptyNodeIdLookUp, IntroductionNode};
 use lightning::ln::channelmanager::PaymentId;
 use lightning::ln::inbound_payment::ExpandedKey;
 use lightning::ln::msgs::SocketAddress;
@@ -33,6 +32,8 @@ use log::{debug, RecordBuilder};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Instant};
+
+use crate::offer_details;
 
 use super::offers_handler::{Bolt12InvoiceResponse, OffersHandler};
 
@@ -118,7 +119,7 @@ pub struct LdkNodeConfig {
 
 #[derive(Debug)]
 pub enum OnionEvent {
-    Resolving(String),
+    Resolving(offer_details::IntroductionNode),
     Resolved(Vec<String>),
     Connecting(String),
     ConnectionError(Error),
@@ -216,25 +217,7 @@ impl LdkNode {
     }
 
     pub async fn start(&self) -> Result<()> {
-        const TIMEOUT: Duration = Duration::from_mins(1);
-        let _ = self.update_network_graph().await?;
-
-        let acinq = PublicKey::from_str(
-            "03864ef025fde8fb587d989186ce6a4a186895ee44a926bfc370e2c366597a3f8f",
-        )?;
-        self.resolve_and_connect(acinq).await?;
-        let now = Instant::now();
-        loop {
-            if self.peer_manager.peer_by_node_id(&acinq).is_some() {
-                debug!("Connected to ACINQ node");
-                return Ok(());
-            }
-            ensure!(
-                now.elapsed() < TIMEOUT,
-                "Failed to init connection after {TIMEOUT:?}"
-            );
-            sleep(Duration::from_secs(1)).await;
-        }
+        self.update_network_graph().await.map(drop)
     }
 
     pub async fn request_invoice(
@@ -287,6 +270,13 @@ impl LdkNode {
             Some(path) => Destination::BlindedPath(path.clone()),
             None => Destination::Node(offer.issuer_signing_pubkey().unwrap()),
         };
+
+        let introduction_node = match &destination {
+            Destination::BlindedPath(path) => path.introduction_node().clone(),
+            Destination::Node(pubkey) => IntroductionNode::NodeId(*pubkey),
+        };
+        self.resolve_and_connect(&introduction_node).await?;
+
         let instructions = MessageSendInstructions::WithReplyPath {
             destination,
             context,
@@ -303,10 +293,7 @@ impl LdkNode {
         match result {
             Ok(SendSuccess::Buffered) => (),
             Ok(SendSuccess::BufferedAwaitingConnection(pubkey)) => {
-                self.events
-                    .send(OnionEvent::ConnectionNeeded(pubkey.to_string()))
-                    .await?;
-                self.resolve_and_connect(pubkey).await?;
+                bail!("Failed to send onion message: needs connection to {pubkey}")
             }
             Err(e) => bail!("Failed to send onion message: {e:?}"),
         };
@@ -319,15 +306,33 @@ impl LdkNode {
         response
     }
 
-    async fn resolve_and_connect(&self, pubkey: PublicKey) -> Result<()> {
+    async fn resolve_and_connect(&self, introduction_node: &IntroductionNode) -> Result<()> {
         self.events
-            .send(OnionEvent::Resolving(pubkey.to_string()))
+            .send(OnionEvent::Resolving(introduction_node.into()))
             .await?;
+
+        let pubkey = match introduction_node {
+            IntroductionNode::NodeId(pubkey) => *pubkey,
+            IntroductionNode::DirectedShortChannelId(direction, scid) => {
+                let network_graph = self.network_graph.read_only();
+                let channel = network_graph
+                    .channel(*scid)
+                    .ok_or_else(|| anyhow!("Introduction node channel {scid} not found"))?;
+                let node_id = match direction {
+                    Direction::NodeOne => channel.node_one,
+                    Direction::NodeTwo => channel.node_two,
+                };
+                node_id.as_pubkey().map_err(|e| {
+                    anyhow!("Failed to parse introduction node pubkey from channel {scid}: {e}")
+                })?
+            }
+        };
+
         let addresses: Vec<_> = self
             .network_graph
             .read_only()
             .get_addresses(&pubkey)
-            .ok_or(anyhow!("Introduction node is not public"))?
+            .ok_or(anyhow!("Introduction node public key not found"))?
             .into_iter()
             .filter_map(to_socket_addr)
             .collect();
@@ -343,6 +348,7 @@ impl LdkNode {
             match self.connect_peer(pubkey, &address).await {
                 Ok(()) => {
                     self.events.send(OnionEvent::Connected).await?;
+                    self.wait_for_handshake(pubkey).await?;
                     return Ok(());
                 }
                 Err(e) => {
@@ -351,6 +357,22 @@ impl LdkNode {
             }
         }
         bail!("All connection attempts failed");
+    }
+
+    async fn wait_for_handshake(&self, pubkey: PublicKey) -> Result<()> {
+        const TIMEOUT: Duration = Duration::from_mins(1);
+
+        let now = Instant::now();
+        loop {
+            if self.peer_manager.peer_by_node_id(&pubkey).is_some() {
+                return Ok(());
+            }
+            ensure!(
+                now.elapsed() < TIMEOUT,
+                "Failed to init connection after {TIMEOUT:?}"
+            );
+            sleep(Duration::from_secs(1)).await;
+        }
     }
 
     async fn connect_peer(&self, pubkey: PublicKey, addr: &SocketAddr) -> Result<()> {
