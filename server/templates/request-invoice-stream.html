@@ -1,0 +1,5 @@
+<div hx-ext="sse" sse-connect="{{ stream_url }}">
+  <h5>🌐 Requesting</h5>
+  <div sse-swap="message" hx-swap="beforeend"></div>
+  <progress id="request-progress" aria-label="Request in progress"></progress>
+</div>

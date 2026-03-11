@@ -9,10 +9,12 @@ askama = "0.14"
 axum = { version = "0.8", features = ["json"] }
 build_html = "2"
 bitcoin = { version = "0.32", default-features = false, features = ["std"] }
+bytes = "1"
 detective = { path = "../detective" }
+futures-util = "0.3"
+rand = "0.8"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["std"] }
 tokio = { version = "1.48", features = ["macros", "rt-multi-thread"] }
-tokio-stream = "0.1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }

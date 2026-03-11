@@ -1,11 +1,8 @@
-<h5>🌐 Requesting</h5>
-
-{% for event in events %}
 {% match event %}
 {% when OnionEvent::Resolving with (introduction_node) %}
 
 <div>
-  {{ loop.index }}. Resolving node:
+  {{ index }}. Resolving node:
   {% match introduction_node %}
   {% when IntroductionNode::NodeId with (pubkey) %}
   <code> {{ pubkey }} </code>
@@ -18,29 +15,35 @@
 
 {% when OnionEvent::Resolved with (addresses) %}
 <div>
-  {{ loop.index }}. Resolved to
+  {{ index }}. Resolved to
   {% for address in addresses %}
   <code>{{ address }}</code>{% if !loop.last %}, {% endif %}
   {% endfor %}
 </div>
 
 {% when OnionEvent::Connecting with (node_id) %}
-<div>{{ loop.index }}. Connecting to <code>{{ node_id }}</code></div>
+<div>{{ index }}. Connecting to <code>{{ node_id }}</code></div>
 
 {% when OnionEvent::ConnectionError with (err) %}
-<div>{{ loop.index }}. Connection error <code>{{ err }}</code></div>
+<div>{{ index }}. Connection error <code>{{ err }}</code></div>
 
 {% when OnionEvent::Connected %}
-<div>{{ loop.index }}. Connected</div>
+<div>{{ index }}. Connected</div>
+
+{% when OnionEvent::WaitingForHandshake %}
+<div>{{ index }}. Waiting for handshake</div>
+
+{% when OnionEvent::Handshaked %}
+<div>{{ index }}. Handshaked</div>
 
 {% when OnionEvent::SendingOnion %}
-<div>{{ loop.index }}. Sending onion message</div>
+<div>{{ index }}. Sending onion message</div>
 
 {% when OnionEvent::OnionSent %}
-<div>{{ loop.index }}. Onion message sent</div>
+<div>{{ index }}. Onion message sent</div>
 
 {% when OnionEvent::ConnectionNeeded with (node_id) %}
-<div>{{ loop.index }}. Connection needed for <code>{{ node_id }}</code></div>
+<div>{{ index }}. Connection needed for <code>{{ node_id }}</code></div>
 
 {% when OnionEvent::Result(Ok(invoice)) %}
 <h5>🧾 Invoice</h5>
@@ -49,8 +52,9 @@
   <br>
   {{ self::investigate_link(invoice) }}
 </div>
+<div id="request-progress" hx-swap-oob="delete"></div>
 
 {% when OnionEvent::Result(Err(err)) %}
 {% include "error.html" %}
+<div id="request-progress" hx-swap-oob="delete"></div>
 {% endmatch %}
-{% endfor %}

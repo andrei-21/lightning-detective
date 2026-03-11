@@ -124,6 +124,8 @@ pub enum OnionEvent {
     Connecting(String),
     ConnectionError(Error),
     Connected,
+    WaitingForHandshake,
+    Handshaked,
     SendingOnion,
     OnionSent,
     ConnectionNeeded(String),
@@ -348,7 +350,9 @@ impl LdkNode {
             match self.connect_peer(pubkey, &address).await {
                 Ok(()) => {
                     self.events.send(OnionEvent::Connected).await?;
+                    self.events.send(OnionEvent::WaitingForHandshake).await?;
                     self.wait_for_handshake(pubkey).await?;
+                    self.events.send(OnionEvent::Handshaked).await?;
                     return Ok(());
                 }
                 Err(e) => {

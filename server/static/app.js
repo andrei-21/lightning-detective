@@ -260,6 +260,11 @@
         if (target === result) {
             result.scrollIntoView({ behavior: "smooth" });
             wireShareButton();
+            return;
+        }
+        if (!target || !target.id) return;
+        if (target.id === "lnurl-result" || target.id === "offer-result") {
+            target.scrollIntoView({ behavior: "smooth" });
         }
     });
 

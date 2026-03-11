@@ -1,18 +1,15 @@
-<h5>🌐 Requesting</h5>
-
-{% for event in events %}
 {% match event %}
 {% when JsonRpcEvent::Requesting with (method, url) %}
-<div>{{ loop.index }}. Sending <code>{{ method }}</code> request to <code>{{ url }}</code></div>
+<div>{{ index }}. Sending <code>{{ method }}</code> request to <code>{{ url }}</code></div>
 
 {% when JsonRpcEvent::ResponseReceived with (status) %}
-<div>{{ loop.index }}. Response received with HTTP status <code>{{ status }}</code></div>
+<div>{{ index }}. Response received with HTTP status <code>{{ status }}</code></div>
 
 {% when JsonRpcEvent::ResponseBodyReceived with (body) %}
-<div>{{ loop.index }}. ... with body <code>{{ body }}</code></div>
+<div>{{ index }}. ... with body <code>{{ body }}</code></div>
 
 {% when JsonRpcEvent::JsonParsed with (json) %}
-<div>{{ loop.index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
+<div>{{ index }}. Parsed as JSON <pre>{{ json | json_pretty }}</pre></div>
 
 {% when JsonRpcEvent::Result(Ok(invoice)) %}
 <h5>🧾 Invoice</h5>
@@ -21,8 +18,9 @@
   <br>
   {{ self::investigate_link(invoice) }}
 </div>
+<div id="request-progress" hx-swap-oob="delete"></div>
 
 {% when JsonRpcEvent::Result(Err(err)) %}
 {% include "error.html" %}
+<div id="request-progress" hx-swap-oob="delete"></div>
 {% endmatch %}
-{% endfor %}

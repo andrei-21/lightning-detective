@@ -73,15 +73,23 @@ pub struct LnurlTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "lnurl-request-invoice.html")]
-pub struct LnurlRequestInvoiceTemplate {
-    pub events: Vec<JsonRpcEvent<String>>,
+#[template(path = "request-invoice-stream.html")]
+pub struct RequestInvoiceStreamTemplate {
+    pub stream_url: String,
 }
 
 #[derive(Template)]
-#[template(path = "offer-request-invoice.html")]
-pub struct OfferRequestInvoiceTemplate {
-    pub events: Vec<OnionEvent>,
+#[template(path = "lnurl-request-invoice-event.html")]
+pub struct LnurlRequestInvoiceEventTemplate {
+    pub index: usize,
+    pub event: JsonRpcEvent<String>,
+}
+
+#[derive(Template)]
+#[template(path = "offer-request-invoice-event.html")]
+pub struct OfferRequestInvoiceEventTemplate {
+    pub index: usize,
+    pub event: OnionEvent,
 }
 
 #[derive(Template)]
