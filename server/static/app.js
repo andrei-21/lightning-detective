@@ -115,6 +115,98 @@
         }
     }
 
+    function getInvestigatedRequest() {
+        try {
+            var current = new URL(window.location.href);
+            return (current.searchParams.get("r") || "").trim();
+        } catch (err) {
+            console.error("Unable to read request from URL", err);
+            return "";
+        }
+    }
+
+    function wireQrButton() {
+        if (!result) return;
+        var toggleBtn = result.querySelector("button.show-qr");
+        var qrPanel = result.querySelector(".qr-panel");
+        var qrWrap = result.querySelector(".qr-canvas-wrap");
+        var qrDownloadBtn = result.querySelector("button.qr-download");
+
+        if (!toggleBtn || !qrPanel || !qrWrap) return;
+        if (toggleBtn.dataset.qrWired === "true") return;
+        toggleBtn.dataset.qrWired = "true";
+
+        var request = getInvestigatedRequest();
+        if (!request) {
+            toggleBtn.disabled = true;
+            return;
+        }
+
+        function getRenderedQrNode() {
+            return qrWrap.querySelector("canvas") || qrWrap.querySelector("img");
+        }
+
+        function ensureQrRendered() {
+            if (getRenderedQrNode()) return true;
+            if (typeof QRCode === "undefined") {
+                console.error("QRCode library is not available");
+                qrWrap.textContent = "QR generator unavailable";
+                return false;
+            }
+            qrWrap.innerHTML = "";
+            try {
+                new QRCode(qrWrap, {
+                    // Let the library pick an appropriate QR version for long/unicode payloads.
+                    typeNumber: 0,
+                    text: request,
+                    width: 280,
+                    height: 280,
+                    correctLevel: QRCode.CorrectLevel.M,
+                });
+                return !!getRenderedQrNode();
+            } catch (err) {
+                console.error("Failed to render QR code", err);
+                qrWrap.textContent = "Unable to generate QR for this input";
+                return false;
+            }
+        }
+
+        toggleBtn.addEventListener("click", function () {
+            var isHidden = qrPanel.hasAttribute("hidden");
+            if (isHidden) {
+                if (!ensureQrRendered()) return;
+                qrPanel.removeAttribute("hidden");
+                toggleBtn.textContent = "Hide QR";
+                return;
+            }
+            qrPanel.setAttribute("hidden", "");
+            toggleBtn.textContent = "Show QR";
+        });
+
+        if (qrDownloadBtn) {
+            qrDownloadBtn.addEventListener("click", function () {
+                if (!ensureQrRendered()) return;
+                var qrNode = getRenderedQrNode();
+                if (!qrNode) return;
+
+                var dataUrl = "";
+                if (qrNode.tagName.toLowerCase() === "canvas" && qrNode.toDataURL) {
+                    dataUrl = qrNode.toDataURL("image/png");
+                } else if (qrNode.tagName.toLowerCase() === "img") {
+                    dataUrl = qrNode.src || "";
+                }
+                if (!dataUrl) return;
+
+                var link = document.createElement("a");
+                link.href = dataUrl;
+                link.download = "payment-request-qr.png";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+    }
+
     function wireShareButton() {
         if (!result) return;
         var btn = result.querySelector("button.share");
@@ -260,6 +352,7 @@
         if (target === result) {
             result.scrollIntoView({ behavior: "smooth" });
             wireShareButton();
+            wireQrButton();
             return;
         }
         if (!target || !target.id) return;
@@ -329,5 +422,6 @@
     }
 
     wireShareButton();
+    wireQrButton();
     updateInputState();
 })();

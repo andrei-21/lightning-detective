@@ -4,6 +4,16 @@
 	  The payment instruction is a <b> {{ name }} </b>
 	  {{ self::doc(doc) }}
 	</div>
-	<div class="div2"><button class="share outline">Share</button></div>
+	<div class="div2 result-actions">
+	  <button class="show-qr outline secondary">Show QR</button>
+	  <button class="share outline">Share</button>
+	</div>
   </div>
+  <section class="qr-panel" hidden>
+	<div class="qr-canvas-wrap" aria-live="polite"></div>
+	<p class="qr-caption">Scan to test your wallet or app.</p>
+	<div class="qr-actions">
+	  <button type="button" class="qr-download secondary">Download PNG</button>
+	</div>
+  </section>
 </header>

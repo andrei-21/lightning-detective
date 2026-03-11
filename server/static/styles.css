@@ -40,7 +40,7 @@ a[href^="http"] {
 
 .parent {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: 1fr auto;
     grid-template-rows: 1fr;
     grid-column-gap: 0;
     grid-row-gap: 0;
@@ -48,15 +48,62 @@ a[href^="http"] {
 }
 
 .div1 {
-    grid-area: 1 / 1 / 2 / 5;
+    grid-area: 1 / 1 / 2 / 2;
 }
 
 .div2 {
-    grid-area: 1 / 5 / 2 / 6;
+    grid-area: 1 / 2 / 2 / 3;
+}
+
+div.result-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
 }
 
 button.share {
     margin-bottom: 0;
+}
+
+button.show-qr {
+    margin-bottom: 0;
+}
+
+.qr-panel {
+    margin-top: calc(var(--spacing) * 0.75);
+    padding: calc(var(--spacing) * 0.8);
+    border: 1px solid var(--card-border-color);
+    border-radius: var(--border-radius);
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.qr-canvas-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.qr-canvas-wrap img,
+.qr-canvas-wrap canvas {
+    width: min(280px, 100%);
+    height: auto;
+    border-radius: 0.25rem;
+    background: #ffffff;
+    border: 10px solid #ffffff;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.45);
+}
+
+.qr-caption {
+    text-align: center;
+    margin: 0.5rem 0 0.75rem;
+    color: var(--muted-color);
+}
+
+.qr-actions {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .muted {
@@ -169,6 +216,22 @@ mark {
     margin-right: 0.6rem;
     vertical-align: middle;
     border-radius: 6px;
+}
+
+@media (max-width: 30rem) {
+    .parent {
+        grid-template-columns: 1fr;
+        row-gap: 0.5rem;
+    }
+
+    .div1,
+    .div2 {
+        grid-area: auto;
+    }
+
+    div.result-actions {
+        justify-content: flex-start;
+    }
 }
 
 @media (max-width: 720px) {

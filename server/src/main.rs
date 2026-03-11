@@ -42,6 +42,7 @@ const APP_SCRIPT: &str = include_str!("../static/app.js");
 const PICO_CSS: &str = include_str!("../static/vendor/pico.min.css");
 const HTMX_SCRIPT: &str = include_str!("../static/vendor/htmx.min.js");
 const HTMX_SSE_SCRIPT: &str = include_str!("../static/vendor/htmx-sse.js");
+const QRCODE_SCRIPT: &str = include_str!("../static/vendor/qrcode.min.js");
 const PAYMENT_INSTRUCTIONS: &[u8] = include_bytes!("../static/payment-instructions.png");
 static OFFER_REQUESTS: OnceLock<Mutex<HashMap<String, OfferRequestInvoiceInput>>> = OnceLock::new();
 static LNURL_REQUESTS: OnceLock<Mutex<HashMap<String, LnurlRequestInvoiceInput>>> = OnceLock::new();
@@ -83,6 +84,7 @@ async fn main() -> Result<()> {
         .route("/static/vendor/pico.min.css", get(pico_css))
         .route("/static/vendor/htmx.min.js", get(htmx_script))
         .route("/static/vendor/htmx-sse.js", get(htmx_sse_script))
+        .route("/static/vendor/qrcode.min.js", get(qrcode_script))
         .route(
             "/static/payment-instructions.png",
             get(payment_instructions_png),
@@ -420,6 +422,16 @@ async fn htmx_script() -> Response<Body> {
         )
         .body(Body::from(HTMX_SCRIPT))
         .expect("Failed to render htmx script")
+}
+
+async fn qrcode_script() -> Response<Body> {
+    Response::builder()
+        .header(
+            header::CONTENT_TYPE,
+            "application/javascript; charset=utf-8",
+        )
+        .body(Body::from(QRCODE_SCRIPT))
+        .expect("Failed to render QR code script")
 }
 
 async fn payment_instructions_png() -> Response<Body> {
