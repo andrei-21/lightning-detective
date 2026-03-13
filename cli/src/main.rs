@@ -5,8 +5,8 @@ use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    resolve_bip353, resolve_lnurl, Description, Image, InvoiceDetails, JsonRpcEvent, LnUrlResponse,
-    PayOfferParams,
+    resolve_bip353, resolve_lnurl, Description, Image, InvoiceDetails, JsonRpcEvent, LiquidAddress,
+    LiquidUri, LnUrlResponse, PayOfferParams,
 };
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
@@ -35,6 +35,12 @@ async fn main() -> Result<()> {
                 .collect::<Vec<_>>()
                 .join(", ");
             println!("Network: {networks}");
+        }
+        DecodedData::LiquidAddress(address) => {
+            print_liquid_address(address);
+        }
+        DecodedData::LiquidUri(uri) => {
+            print_liquid_uri(uri);
         }
         DecodedData::SilentPaymentAddress(address) => {
             println!("📋 {}", " Silent Payment Address ".reversed());
@@ -284,6 +290,46 @@ fn print_bip21(bip21: Bip21) {
                 println!("Payjoin Disallow Output Substitution")
             }
             Bip21Param::Unknown(key, value) => println!("Unknown param {key}={value}"),
+        }
+    }
+}
+
+fn print_liquid_address(address: LiquidAddress) {
+    println!("📋 {}", " Liquid Address ".reversed());
+    println!("   Address: {}", address.address);
+    println!("      Type: {}", format_option(&address.address_type));
+    let networks = address
+        .valid_networks
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
+    println!("   Network: {networks}");
+    println!(
+        "Confidential: {}",
+        if address.is_confidential { "yes" } else { "no" }
+    );
+}
+
+fn print_liquid_uri(uri: LiquidUri) {
+    println!("📋 {}", " Liquid URI ".reversed());
+    println!(" Scheme: {}", uri.scheme);
+    match uri.address {
+        Some(address) => {
+            println!("Address: {}", address.address);
+            println!("   Type: {}", format_option(&address.address_type));
+        }
+        None => println!("Address: {}", "empty".italic().dimmed()),
+    }
+    println!(" Amount: {}", format_option(&uri.amount));
+    println!("AssetID: {}", format_option(&uri.asset_id));
+    println!("  Label: {}", format_option(&uri.label));
+    println!("Message: {}", format_option(&uri.message));
+    if uri.unknown_params.is_empty() {
+        println!("Unknown: {}", "none".italic().dimmed());
+    } else {
+        for (key, value) in uri.unknown_params {
+            println!("Unknown: {key}={value}");
         }
     }
 }

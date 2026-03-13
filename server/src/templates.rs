@@ -6,8 +6,8 @@ use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
     Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, JsonRpcEvent,
-    LightningAddress, LnUrlResponse, Node, OnchainAddress, OnionEvent, RecipientNode, ServiceKind,
-    SilentPaymentAddress,
+    LightningAddress, LiquidAddress, LiquidUri, LnUrlResponse, Node, OnchainAddress, OnionEvent,
+    RecipientNode, ServiceKind, SilentPaymentAddress,
 };
 
 #[derive(Template)]
@@ -37,6 +37,18 @@ pub struct OnchainAddressTemplate {
 #[template(path = "silent_payment_address.html")]
 pub struct SilentPaymentAddressTemplate {
     pub address: SilentPaymentAddress,
+}
+
+#[derive(Template)]
+#[template(path = "liquid_address.html")]
+pub struct LiquidAddressTemplate {
+    pub address: LiquidAddress,
+}
+
+#[derive(Template)]
+#[template(path = "liquid_uri.html")]
+pub struct LiquidUriTemplate {
+    pub uri: LiquidUri,
 }
 
 #[derive(Template)]

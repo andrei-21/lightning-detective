@@ -7,16 +7,21 @@ use reqwest::Url;
 use silentpayments::SilentPaymentAddress;
 use std::str::FromStr;
 
+use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidUri};
 use crate::lnurl::LightningAddress;
 use crate::types::Sat;
 use crate::OnchainAddress;
 
 const BITCOIN_PREFIX: &str = "bitcoin:";
+const LIQUID_PREFIX: &str = "liquidnetwork:";
+const LIQUID_TESTNET_PREFIX: &str = "liquidtestnet:";
 
 #[derive(Debug)]
 #[allow(clippy::large_enum_variant)]
 pub enum DecodedData {
     OnchainAddress(OnchainAddress),
+    LiquidAddress(LiquidAddress),
+    LiquidUri(LiquidUri),
     Invoice(Bolt11Invoice),
     Offer(Offer),
     Refund(Refund),
@@ -37,6 +42,12 @@ pub fn decode(input: &str) -> Result<DecodedData> {
 
     let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
+    } else if lowercased.starts_with(LIQUID_PREFIX) || lowercased.starts_with(LIQUID_TESTNET_PREFIX)
+    {
+        let liquid_uri = parse_liquid_uri(input).context("Failed to parse Liquid URI")?;
+        DecodedData::LiquidUri(liquid_uri)
+    } else if let Ok(address) = LiquidAddress::from_str(input) {
+        DecodedData::LiquidAddress(address)
     } else if let Ok(address) = OnchainAddress::from_str(input) {
         DecodedData::OnchainAddress(address)
     } else if let Ok(address) = SilentPaymentAddress::try_from(input) {
@@ -239,6 +250,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::liquid_address::LiquidNetwork;
     use crate::types::Sat;
     use bitcoin::{AddressType, Network};
 
@@ -366,6 +378,43 @@ mod tests {
                 assert_eq!(lightning_address.domain, "bitcoin.org");
             }
             other => panic!("expected BIP-353 name or lightning address, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_liquid_address() {
+        let input = "ex1q7gkeyjut0mrxc3j0kjlt7rmcnvsh0gt45d3fud";
+        match decode(input).unwrap() {
+            DecodedData::LiquidAddress(address) => {
+                assert_eq!(address.address, input);
+                assert_eq!(address.address_type, Some("p2wpkh".to_string()));
+                assert_eq!(address.valid_networks, vec![LiquidNetwork::Liquid]);
+                assert!(!address.is_confidential);
+            }
+            other => panic!("expected Liquid address, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_liquid_uri_with_params() {
+        let uri = "liquidnetwork:ex1q7gkeyjut0mrxc3j0kjlt7rmcnvsh0gt45d3fud?amount=0.001&assetid=6f0279e9ed52f4f7b18016d875f794f6f4f08484f6a5f6f5f1f4f4f4f4f4f4f4&label=Donation&message=Thanks%20Liquid";
+        match decode(uri).unwrap() {
+            DecodedData::LiquidUri(liquid_uri) => {
+                assert_eq!(liquid_uri.scheme, LiquidNetwork::Liquid);
+                assert_eq!(liquid_uri.amount, Some("100,000 sats".to_string()));
+                assert_eq!(
+                    liquid_uri.asset_id,
+                    Some(
+                        "6f0279e9ed52f4f7b18016d875f794f6f4f08484f6a5f6f5f1f4f4f4f4f4f4f4"
+                            .to_string()
+                    )
+                );
+                assert_eq!(liquid_uri.label, Some("Donation".to_string()));
+                assert_eq!(liquid_uri.message, Some("Thanks Liquid".to_string()));
+                assert!(liquid_uri.unknown_params.is_empty());
+                assert!(liquid_uri.address.is_some());
+            }
+            other => panic!("expected Liquid URI, got {other:?}"),
         }
     }
 }

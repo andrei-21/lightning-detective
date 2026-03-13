@@ -10,6 +10,7 @@ bech32 = "0.11"
 bitcoin = { version = "0.32", default-features = false, features = ["std", "rand-std"] }
 bitcoin-payment-instructions = "0.6"
 chrono = "0.4"
+elements = "0.25"
 iso_currency = "0.5"
 lightning = { version = "0.2", default-features = false, features = ["std"] }
 lightning-invoice = { version = "0.34", features = ["std"] }

@@ -32,8 +32,9 @@ mod templates;
 
 use crate::templates::{
     Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, DocTemplate, ErrorTemplate,
-    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LnurlRequestInvoiceEventTemplate,
-    LnurlTemplate, OfferRequestInvoiceEventTemplate, OfferTemplate, OnchainAddressTemplate,
+    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LiquidAddressTemplate,
+    LiquidUriTemplate, LnurlRequestInvoiceEventTemplate, LnurlTemplate,
+    OfferRequestInvoiceEventTemplate, OfferTemplate, OnchainAddressTemplate,
     RequestInvoiceStreamTemplate, SilentPaymentAddressTemplate,
 };
 
@@ -140,6 +141,8 @@ async fn parse_impl(input: &str) -> Result<String> {
 
     match decoded {
         DecodedData::OnchainAddress(address) => OnchainAddressTemplate { address }.render(),
+        DecodedData::LiquidAddress(address) => LiquidAddressTemplate { address }.render(),
+        DecodedData::LiquidUri(uri) => LiquidUriTemplate { uri }.render(),
         DecodedData::SilentPaymentAddress(address) => {
             SilentPaymentAddressTemplate { address }.render()
         }

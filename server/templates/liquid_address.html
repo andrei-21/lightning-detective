@@ -1,0 +1,38 @@
+<article>
+  {% set name = "Liquid Address" %}
+  {% set doc = "liquid-address" %}
+  {% include "include/result-header.html" %}
+
+  <table>
+	<tbody>
+	  <tr>
+		<th scope="row"> Liquid address </th>
+		<td> {{ address.address | hex }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Type </th>
+		<td>
+		  {% if let Some(address_type) = address.address_type %}
+		  <mark class="badge-required">{{ address_type }}</mark>
+		  {% else %}
+		  {{ self::mute("empty") }}
+		  {% endif %}
+		</td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Network </th>
+		<td>
+		  {% for network in address.valid_networks %}
+		  {{ network }}{% if !loop.last %}, {% endif %}
+		  {% endfor %}
+		</td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Confidential </th>
+		<td>
+		  {% if address.is_confidential %}yes{% else %}no{% endif %}
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</article>

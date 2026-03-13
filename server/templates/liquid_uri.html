@@ -1,0 +1,47 @@
+<article>
+  {% set name = "Liquid URI" %}
+  {% set doc = "liquid-uri" %}
+  {% include "include/result-header.html" %}
+
+  <table>
+	<tbody>
+	  <tr>
+		<th scope="row"> Scheme </th>
+		<td> {{ uri.scheme }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Address </th>
+		<td>
+		  {% if let Some(address) = uri.address %}
+		  {% if let Some(address_type) = address.address_type %}
+		  <mark class="badge-required">{{ address_type }}</mark>
+		  {% else %}
+		  {{ self::mute("empty") }}
+		  {% endif %}
+		  {{ address.address | hex }}
+		  <br>
+		  {{ self::investigate_link(address.address) }}
+		  {% else %}
+		  {{ self::mute("empty") }}
+		  {% endif %}
+		</td>
+	  </tr>
+	  <tr><th scope="row"> Amount </th><td> {{ uri.amount | or_empty }} </td></tr>
+	  <tr><th scope="row"> Asset id </th><td> {{ uri.asset_id | or_empty }} </td></tr>
+	  <tr><th scope="row"> Label </th><td> {{ uri.label | or_empty }} </td></tr>
+	  <tr><th scope="row"> Message </th><td> {{ uri.message | or_empty }} </td></tr>
+	  <tr>
+		<th scope="row"> Unknown params </th>
+		<td>
+		  {% if uri.unknown_params.is_empty() %}
+		  {{ self::mute("none") }}
+		  {% else %}
+		  {% for param in uri.unknown_params %}
+		  <code>{{ param.0 }}={{ param.1 }}</code><br>
+		  {% endfor %}
+		  {% endif %}
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</article>

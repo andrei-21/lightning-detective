@@ -39,9 +39,11 @@
 
 		  
           <li><b><a href="#bip21">BIP-21 URI Scheme</a></b></li>
+          <li><b><a href="#liquid-uri">Liquid URI</a></b></li>
           <li><b><a href="#bip352">BIP-352 Silent Payments</a></b></li>
           <li><b><a href="#bip353">BIP-353 DNS Payment Instructions</a></b></li>
           <li><b><a href="#onchain">On-Chain Addresses</a></b></li>
+          <li><b><a href="#liquid-address">Liquid Addresses</a></b></li>
 
           <li>
 			<b><a href="#lnurl">LNURL</a></b>
@@ -123,6 +125,23 @@
 			This URI structure simplifies payment initiation by bundling all necessary data into a single link.
 		  </p>
 		</section>
+
+		<section>
+		  <h2 id="liquid-uri">Liquid URI</h2>
+		  <p>
+			Liquid payment URIs are a de-facto extension of <a href="#bip21">BIP-21</a> conventions for the Liquid network.
+			Common schemes are <code>liquidnetwork:</code> and <code>liquidtestnet:</code>.
+		  </p>
+		  <p>
+			Like BIP-21, the URI contains an address and optional query parameters such as
+			<code>amount</code>, <code>label</code>, and <code>message</code>.
+			Liquid-specific extensions may include parameters such as <code>assetid</code>.
+		  </p>
+		  <p>
+			Reference discussion:
+			{{ self::external_link("https://github.com/ElementsProject/elements/issues/805", "Elements issue #805") }}.
+		  </p>
+		</section>
 		
 		<section>
 		  <h2 id="bip352">BIP-352 Silent Payments</h2>
@@ -158,6 +177,22 @@
 		  <p>
 			More information on
 			{{ self::external_link("https://bitcoin.design/guide/glossary/address", "Bitcoin design guide") }}.
+		  </p>
+		</section>
+
+		<section>
+		  <h2 id="liquid-address">Liquid Addresses</h2>
+		  <p>
+			Liquid addresses identify destinations on the Liquid sidechain.
+			They can be unconfidential or confidential (blinded).
+		  </p>
+		  <p>
+			Supported address families include base58 and segwit-style encodings, with network-specific prefixes
+			(e.g. <code>ex</code>/<code>lq</code> on Liquid mainnet and <code>tex</code>/<code>tlq</code> on Liquid testnet).
+		  </p>
+		  <p>
+			Confidential addresses embed a blinding public key, which enables confidential transactions while still
+			representing the same spending script as the corresponding unconfidential address.
 		  </p>
 		</section>
 		

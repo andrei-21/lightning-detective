@@ -7,6 +7,7 @@ mod features;
 mod graph_database;
 mod invoice_details;
 mod ldk_node;
+mod liquid_address;
 mod lnurl;
 mod node;
 pub mod offer_details;
@@ -22,6 +23,7 @@ pub use crate::invoice_details::{
     Description, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
 pub use crate::ldk_node::{request_bolt12_invoice, OnionEvent, PayOfferParams};
+pub use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidNetwork, LiquidUri};
 pub use crate::lnurl::{
     request_invoice, resolve_lnurl, Image, JsonRpcEvent, LightningAddress, LnUrlResponse,
     PayResponse,
