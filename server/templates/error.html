@@ -2,3 +2,7 @@
   <header><b>Error</b></header>
   {{ err | fmt("{:#}") }}
 </article>
+<p class="error-report-tip">
+  If you think this result is incorrect, please
+  {{ self::external_link("https://github.com/andrei-21/lightning-detective/issues/new", "file an issue on GitHub") }}.
+</p>
