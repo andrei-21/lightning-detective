@@ -5,9 +5,9 @@ use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
 use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    Bip353Result, Description, FeatureFlag, InvestigativeFindings, InvoiceDetails, JsonRpcEvent,
-    LightningAddress, LiquidAddress, LiquidUri, LnUrlResponse, Node, OnchainAddress, OnionEvent,
-    RecipientNode, ServiceKind, SilentPaymentAddress,
+    Bip353Result, Description, FeatureFlag, InvestigateValue, InvestigativeFindings,
+    InvoiceDetails, JsonRpcEvent, LightningAddress, LiquidAddress, LiquidUri, LnUrlResponse, Node,
+    OnchainAddress, OnionEvent, RecipientNode, ServiceKind, SilentPaymentAddress,
 };
 
 #[derive(Template)]
@@ -61,6 +61,20 @@ pub struct OfferTemplate {
 #[template(path = "invoice.html")]
 pub struct InvoiceTemplate {
     pub invoice: InvoiceDetails,
+    pub findings: InvestigativeFindings,
+}
+
+#[derive(Template)]
+#[template(path = "bolt12-invoice.html")]
+pub struct Bolt12InvoiceTemplate {
+    pub details: detective::Bolt12InvoiceDetails,
+    pub findings: InvestigativeFindings,
+}
+
+#[derive(Template)]
+#[template(path = "bolt12-static-invoice.html")]
+pub struct Bolt12StaticInvoiceTemplate {
+    pub details: detective::Bolt12StaticInvoiceDetails,
     pub findings: InvestigativeFindings,
 }
 
@@ -143,10 +157,27 @@ pub fn mute(message: &str) -> Safe<String> {
     )
 }
 
-pub fn investigate_link(payload: &String) -> Safe<String> {
+pub fn investigate_link(payload: &str) -> Safe<String> {
+    let payload = urlencoding::encode(payload);
     Safe(
         HtmlElement::new(HtmlTag::Bold)
             .with_link(format!("/?r={payload}#result"), "Investigate →")
+            .to_html_string(),
+    )
+}
+
+pub fn investigate_payload(payload: &str) -> String {
+    InvestigateValue::parse(payload)
+        .map(|value| value.payload)
+        .unwrap_or_else(|| payload.to_string())
+}
+
+pub fn investigate_payload_hex(payload: &str) -> Safe<String> {
+    let payload = investigate_payload(payload);
+    Safe(
+        HtmlElement::new(HtmlTag::CodeText)
+            .with_attribute("class", "code-value")
+            .with_child(payload.into())
             .to_html_string(),
     )
 }

@@ -1,10 +1,14 @@
 #![warn(unused_crate_dependencies)]
 
 mod bip353;
+pub mod bolt12;
+mod bolt12_invoice_details;
 mod chain_hash;
 pub mod decoder;
+mod duration;
 mod features;
 mod graph_database;
+mod investigate_value;
 mod invoice_details;
 mod ldk_node;
 mod liquid_address;
@@ -17,8 +21,10 @@ mod spark;
 pub mod types;
 
 pub use crate::bip353::{resolve_bip353, Bip353Result};
+pub use crate::bolt12_invoice_details::{Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails};
 pub use crate::features::{Feature, FeatureFlag, Features};
 use crate::graph_database::GraphDatabase;
+pub use crate::investigate_value::{InvestigateValue, InvestigateValueKind};
 pub use crate::invoice_details::{
     Description, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
 };
@@ -36,7 +42,9 @@ use anyhow::{anyhow, Error, Result};
 use bitcoin::secp256k1::PublicKey;
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
+use lightning::offers::invoice::Bolt12Invoice;
 use lightning::offers::offer::Offer;
+use lightning::offers::static_invoice::StaticInvoice;
 use lightning_invoice::{Bolt11Invoice, RouteHint};
 pub use onchain_address::OnchainAddress;
 pub use silentpayments::SilentPaymentAddress;
@@ -112,43 +120,48 @@ impl InvoiceDetective {
     }
 
     pub fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
-        if offer.paths().is_empty() {
-            let pubkey = offer
-                .issuer_signing_pubkey()
-                .ok_or(anyhow!("Blinded path and signing key are empty"))?
-                .to_string();
-            let payee = self.graph_database.query(pubkey.clone())?;
-            let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
-
-            return Ok(InvestigativeFindings {
-                recipient,
-                payee,
-                route_hints: Vec::new(),
-                botlz_mrh_pubkey: None,
-            });
-        }
-
-        let introduction_node = offer
-            .paths()
-            .first()
-            .map(BlindedMessagePath::introduction_node);
-        let destination = match introduction_node {
-            Some(IntroductionNode::NodeId(introduction_node_id)) => Destination::Blinded {
-                introduction_node_id: *introduction_node_id,
-            },
-            Some(IntroductionNode::DirectedShortChannelId(_direction, _channel_id)) => {
-                unimplemented!();
-            }
-            None => Destination::Node(
-                offer
-                    .issuer_signing_pubkey()
-                    .ok_or(anyhow!("Blinded path and signing key are empty"))?,
-            ),
-        };
-        let pubkey = destination.pubkey().to_string();
+        let pubkey = resolve_bolt12_pubkey(offer.paths(), offer.issuer_signing_pubkey(), None)?;
         let payee = self.graph_database.query(pubkey.clone())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
 
+        Ok(InvestigativeFindings {
+            recipient,
+            payee,
+            route_hints: Vec::new(),
+            botlz_mrh_pubkey: None,
+        })
+    }
+
+    pub fn investigate_bolt12_invoice(
+        &self,
+        invoice: &Bolt12Invoice,
+    ) -> Result<InvestigativeFindings> {
+        let pubkey = resolve_bolt12_pubkey(
+            invoice.message_paths(),
+            invoice.issuer_signing_pubkey(),
+            Some(invoice.signing_pubkey()),
+        )?;
+        let payee = self.graph_database.query(pubkey.clone())?;
+        let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
+        Ok(InvestigativeFindings {
+            recipient,
+            payee,
+            route_hints: Vec::new(),
+            botlz_mrh_pubkey: None,
+        })
+    }
+
+    pub fn investigate_bolt12_static_invoice(
+        &self,
+        invoice: &StaticInvoice,
+    ) -> Result<InvestigativeFindings> {
+        let pubkey = resolve_bolt12_pubkey(
+            invoice.offer_message_paths(),
+            invoice.issuer_signing_pubkey(),
+            Some(invoice.signing_pubkey()),
+        )?;
+        let payee = self.graph_database.query(pubkey.clone())?;
+        let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
         Ok(InvestigativeFindings {
             recipient,
             payee,
@@ -169,6 +182,33 @@ impl InvoiceDetective {
         }
         Ok(result)
     }
+}
+
+fn resolve_bolt12_pubkey(
+    message_paths: &[BlindedMessagePath],
+    issuer_signing_pubkey: Option<PublicKey>,
+    fallback_signing_pubkey: Option<PublicKey>,
+) -> Result<String> {
+    let introduction_node = message_paths
+        .first()
+        .map(BlindedMessagePath::introduction_node);
+    let destination = match introduction_node {
+        Some(IntroductionNode::NodeId(introduction_node_id)) => Destination::Blinded {
+            introduction_node_id: *introduction_node_id,
+        },
+        Some(IntroductionNode::DirectedShortChannelId(_direction, channel_id)) => {
+            return Err(anyhow!(
+                "Unable to investigate BOLT-12 payload with directed short channel id {channel_id}"
+            ));
+        }
+        None => {
+            let pubkey = issuer_signing_pubkey
+                .or(fallback_signing_pubkey)
+                .ok_or(anyhow!("Blinded path and signing key are empty"))?;
+            Destination::Node(pubkey)
+        }
+    };
+    Ok(destination.pubkey().to_string())
 }
 
 #[derive(Debug)]

@@ -1,7 +1,10 @@
 use anyhow::{anyhow, bail, ensure, Context, Error, Result};
+use bitcoin::hex::FromHex;
 pub use bitcoin_payment_instructions::hrn_resolution::HumanReadableName;
+use lightning::offers::invoice::Bolt12Invoice;
 use lightning::offers::offer::Offer;
 use lightning::offers::refund::Refund;
+use lightning::offers::static_invoice::StaticInvoice;
 use lightning_invoice::Bolt11Invoice;
 use reqwest::Url;
 use silentpayments::SilentPaymentAddress;
@@ -10,7 +13,7 @@ use std::str::FromStr;
 use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidUri};
 use crate::lnurl::LightningAddress;
 use crate::types::Sat;
-use crate::OnchainAddress;
+use crate::{InvestigateValue, InvestigateValueKind, OnchainAddress};
 
 const BITCOIN_PREFIX: &str = "bitcoin:";
 const LIQUID_PREFIX: &str = "liquidnetwork:";
@@ -31,6 +34,8 @@ pub enum DecodedData {
     Bip353(HumanReadableName),
     Bip353OrLightningAddress(HumanReadableName, LightningAddress),
     SilentPaymentAddress(SilentPaymentAddress),
+    Bolt12Invoice(Bolt12Invoice),
+    Bolt12StaticInvoice(StaticInvoice),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -40,7 +45,19 @@ pub fn decode(input: &str) -> Result<DecodedData> {
     // TODO: Decode BIP 72.
     // TODO: Decode xpub, xpriv.
 
-    let decoded_data = if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
+    let decoded_data = if let Some(value) = InvestigateValue::parse(input) {
+        let payload = Vec::<u8>::from_hex(&value.payload).map_err(Error::msg)?;
+        match value.kind {
+            InvestigateValueKind::Bolt12Invoice => {
+                let invoice = Bolt12Invoice::try_from(payload).map_err(|e| anyhow!("{e:?}"))?;
+                DecodedData::Bolt12Invoice(invoice)
+            }
+            InvestigateValueKind::Bolt12StaticInvoice => {
+                let invoice = StaticInvoice::try_from(payload).map_err(|e| anyhow!("{e:?}"))?;
+                DecodedData::Bolt12StaticInvoice(invoice)
+            }
+        }
+    } else if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
     } else if lowercased.starts_with(LIQUID_PREFIX) || lowercased.starts_with(LIQUID_TESTNET_PREFIX)
     {

@@ -1,0 +1,137 @@
+<article>
+  {% set name = "BOLT-12 Static Invoice" %}
+  {% set doc = "bolt12" %}
+  {% include "include/result-header.html" %}
+
+  <h5>🔎 Investigative Findings</h5>
+  <p>
+	{% match findings.recipient %}
+	{% when RecipientNode::Custodial { custodian } %}
+	Custodial {{ custodian.service }} <b>{{ custodian.name }}</b>
+	{% when RecipientNode::NonCustodial { id, lsp } %}
+	{% if lsp.service == ServiceKind::Spark %}
+	Non-custodial <b>{{ lsp.name }}</b> wallet
+	{% if !id.is_empty() %}
+	with id <b>{{ id }}</b> <br>
+	{{ self::sparkscan_link(id) }}
+	{% endif %}
+	{% else %}
+	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b> with id <b>{{ id }}</b>
+	{% endif %}
+	{% when RecipientNode::NonCustodialWrapped { lsp } %}
+	Non-custodial {{ lsp.service }} <b>{{ lsp.name }}</b>
+	{% when RecipientNode::Unknown %}
+	Unknown
+	{% endmatch %}
+  </p>
+
+  <h5>🗃️ Evidences</h5>
+  <div>
+	<p>
+	  Pay to
+	  {% if findings.payee.is_announced %}
+	  public node <b>{{ self::explorer_link(findings.payee) }}</b>
+	  {% else %}
+	  private node <b>{{ findings.payee.pubkey | hex }}</b>
+	  {% endif %}
+	</p>
+  </div>
+
+  <h5>📋 Details</h5>
+  <table>
+	<tbody>
+	  <tr><th scope="row"> Chain </th><td> {{ details.chain }} </td></tr>
+	  <tr><th scope="row"> Amount </th><td> {{ details.amount | or_empty }} </td></tr>
+	  <tr><th scope="row"> Supported quantity </th><td> {{ details.supported_quantity }} </td></tr>
+	  <tr><th scope="row"> Description </th><td> {{ details.description | or_empty }} </td></tr>
+	  <tr><th scope="row"> Issuer </th><td> {{ details.issuer | or_empty }} </td></tr>
+	  <tr><th scope="row"> Metadata </th><td> {{ details.metadata | or_empty_hex }} </td></tr>
+	  <tr><th scope="row"> Created at </th><td> {{ details.created_at }} </td></tr>
+	  <tr>
+		<th scope="row"> Relative expiry </th>
+		<td>
+		  {{ details.relative_expiry }}
+		  {% if details.has_expired %}
+		  <mark data-tooltip="The invoice has already expired">expired</mark>
+		  {% endif %}
+		</td>
+	  </tr>
+	  <tr><th scope="row"> Absolute expiry </th><td> {{ details.absolute_expiry | or_empty }} </td></tr>
+	  <tr><th scope="row"> Signing pubkey </th><td> {{ details.signing_pubkey | hex }} </td></tr>
+	  <tr><th scope="row"> Issuer signing pubkey </th><td> {{ details.issuer_signing_pubkey | or_empty_hex }} </td></tr>
+	  <tr><th scope="row"> Signature </th><td> {{ details.signature | hex }} </td></tr>
+	  <tr>
+		<th scope="row"> Invoice features </th>
+		<td>
+		  {{ details.invoice_features.hex | or_empty_hex }}
+		  <div class="grid-like">
+			{% for feature in details.invoice_features.features %}
+			<span> {{ feature.0 }} </span>
+			<span> {{ self::format_feature_flag(feature.1) }} </span>
+			{% endfor %}
+		  </div>
+		</td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Offer features </th>
+		<td>
+		  {{ details.offer_features.hex | or_empty_hex }}
+		  <div class="grid-like">
+			{% for feature in details.offer_features.features %}
+			<span> {{ feature.0 }} </span>
+			<span> {{ self::format_feature_flag(feature.1) }} </span>
+			{% endfor %}
+		  </div>
+		</td>
+	  </tr>
+
+	  {% for path in details.offer_message_paths %}
+	  <tr>
+		<th scope="row"> Offer path #{{ loop.index0 }} </th>
+		<td>
+		  Introduction node:
+		  {% match path.introduction_node %}
+		  {% when IntroductionNode::NodeId with (pubkey) %}
+		  {{ pubkey | hex }} <br>
+		  {% when IntroductionNode::LeftEnd with (channel) %}
+		  <b>Left</b> end of <code>{{ channel }}</code> <br>
+		  {% when IntroductionNode::RightEnd with (channel) %}
+		  <b>Right</b> end of <code>{{ channel }}</code> <br>
+		  {% endmatch %}
+		  Blinding point: {{ path.blinding_point | hex }}
+		  <hr>
+		  <ol start="0">
+			{% for hop in path.hops %}
+			<li>Node id: {{ hop.node_id | hex }} <br> Encrypted payload: {{ hop.encrypted_payload | hex }}</li>
+			{% endfor %}
+		  </ol>
+		</td>
+	  </tr>
+	  {% endfor %}
+
+	  {% for path in details.message_paths %}
+	  <tr>
+		<th scope="row"> Message path #{{ loop.index0 }} </th>
+		<td>
+		  Introduction node:
+		  {% match path.introduction_node %}
+		  {% when IntroductionNode::NodeId with (pubkey) %}
+		  {{ pubkey | hex }} <br>
+		  {% when IntroductionNode::LeftEnd with (channel) %}
+		  <b>Left</b> end of <code>{{ channel }}</code> <br>
+		  {% when IntroductionNode::RightEnd with (channel) %}
+		  <b>Right</b> end of <code>{{ channel }}</code> <br>
+		  {% endmatch %}
+		  Blinding point: {{ path.blinding_point | hex }}
+		  <hr>
+		  <ol start="0">
+			{% for hop in path.hops %}
+			<li>Node id: {{ hop.node_id | hex }} <br> Encrypted payload: {{ hop.encrypted_payload | hex }}</li>
+			{% endfor %}
+		  </ol>
+		</td>
+	  </tr>
+	  {% endfor %}
+	</tbody>
+  </table>
+</article>

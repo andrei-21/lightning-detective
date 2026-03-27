@@ -1,3 +1,4 @@
+use crate::duration::format_duration;
 use crate::features::Features;
 use crate::types::{Msat, MsatRange};
 use chrono::{DateTime, Utc};
@@ -149,39 +150,6 @@ impl From<&Bolt11Invoice> for InvoiceDetails {
             payee_pub_key_recovered,
             signable_hash,
         }
-    }
-}
-
-fn format_duration(duration: &Duration) -> String {
-    let secs = duration.as_secs();
-    let (days, hrs, mins, secs) = (
-        secs / 86400,
-        (secs % 86400) / 3600,
-        (secs % 3600) / 60,
-        secs % 60,
-    );
-
-    let mut parts = Vec::new();
-    if days > 0 {
-        parts.push(format!("{days} day{}", plural(days)));
-    }
-    if hrs > 0 {
-        parts.push(format!("{hrs} hour{}", plural(hrs)));
-    }
-    if mins > 0 {
-        parts.push(format!("{mins} min{}", plural(mins)));
-    }
-    if secs > 0 || parts.is_empty() {
-        parts.push(format!("{secs} second{}", plural(secs)));
-    }
-    parts.join(", ")
-}
-
-fn plural(number: u64) -> &'static str {
-    if number == 1 {
-        ""
-    } else {
-        "s"
     }
 }
 

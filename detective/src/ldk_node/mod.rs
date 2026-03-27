@@ -1,6 +1,7 @@
 mod node;
 mod offers_handler;
 
+use crate::{InvestigateValue, InvestigateValueKind};
 use anyhow::{anyhow, Result};
 use bitcoin::hex::DisplayHex;
 use bitcoin::Network;
@@ -20,12 +21,16 @@ pub async fn request_bolt12_invoice(
     tokio::spawn(async move {
         let result = request_bolt12_invoice_impl(&offer, params, tx.clone()).await;
         let result = match result {
-            Ok(Bolt12InvoiceResponse::Invoice(invoice)) => {
-                Ok(invoice.encode().as_hex().to_string())
-            }
-            Ok(Bolt12InvoiceResponse::StaticInvoice(invoice)) => {
-                Ok(invoice.encode().as_hex().to_string())
-            }
+            Ok(Bolt12InvoiceResponse::Invoice(invoice)) => Ok(InvestigateValue::new(
+                InvestigateValueKind::Bolt12Invoice,
+                invoice.encode().as_hex().to_string(),
+            )
+            .as_encoded()),
+            Ok(Bolt12InvoiceResponse::StaticInvoice(invoice)) => Ok(InvestigateValue::new(
+                InvestigateValueKind::Bolt12StaticInvoice,
+                invoice.encode().as_hex().to_string(),
+            )
+            .as_encoded()),
             Ok(Bolt12InvoiceResponse::InvoiceError(e)) => Err(anyhow!("{e:?}")),
             Err(e) => Err(e),
         };

@@ -15,7 +15,8 @@ use detective::decoder::{parse_bip21, DecodedData, HumanReadableName};
 use detective::offer_details::OfferDetails;
 use detective::types::Msat;
 use detective::{
-    resolve_bip353, resolve_lnurl, InvoiceDetails, JsonRpcEvent, LnUrlResponse, PayOfferParams,
+    resolve_bip353, resolve_lnurl, Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails,
+    InvoiceDetails, JsonRpcEvent, LnUrlResponse, PayOfferParams,
 };
 use futures_util::StreamExt;
 use rand::distributions::Alphanumeric;
@@ -31,11 +32,12 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod templates;
 
 use crate::templates::{
-    Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, DocTemplate, ErrorTemplate,
-    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LiquidAddressTemplate,
-    LiquidUriTemplate, LnurlRequestInvoiceEventTemplate, LnurlTemplate,
-    OfferRequestInvoiceEventTemplate, OfferTemplate, OnchainAddressTemplate,
-    RequestInvoiceStreamTemplate, SilentPaymentAddressTemplate,
+    Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, Bolt12InvoiceTemplate,
+    Bolt12StaticInvoiceTemplate, DocTemplate, ErrorTemplate, IndexTemplate, InvoiceTemplate,
+    LightningAddressTemplate, LiquidAddressTemplate, LiquidUriTemplate,
+    LnurlRequestInvoiceEventTemplate, LnurlTemplate, OfferRequestInvoiceEventTemplate,
+    OfferTemplate, OnchainAddressTemplate, RequestInvoiceStreamTemplate,
+    SilentPaymentAddressTemplate,
 };
 
 const STYLESHEET: &str = include_str!("../static/styles.css");
@@ -137,6 +139,8 @@ async fn parse(Form(input): Form<Input>) -> Html<String> {
 }
 
 async fn parse_impl(input: &str) -> Result<String> {
+    let input = input.trim();
+
     let decoded = detective::decoder::decode(input)?;
 
     match decoded {
@@ -158,6 +162,24 @@ async fn parse_impl(input: &str) -> Result<String> {
                 .context("Failed to investigate invoice")?;
             let invoice = InvoiceDetails::from(&invoice);
             InvoiceTemplate { invoice, findings }.render()
+        }
+        DecodedData::Bolt12Invoice(invoice) => {
+            let detective = detective::InvoiceDetective::new()
+                .context("Failed to construct InvoiceDetective")?;
+            let findings = detective
+                .investigate_bolt12_invoice(&invoice)
+                .context("Failed to investigate invoice")?;
+            let details = Bolt12InvoiceDetails::from(&invoice);
+            Bolt12InvoiceTemplate { details, findings }.render()
+        }
+        DecodedData::Bolt12StaticInvoice(invoice) => {
+            let detective = detective::InvoiceDetective::new()
+                .context("Failed to construct InvoiceDetective")?;
+            let findings = detective
+                .investigate_bolt12_static_invoice(&invoice)
+                .context("Failed to investigate invoice")?;
+            let details = Bolt12StaticInvoiceDetails::from(&invoice);
+            Bolt12StaticInvoiceTemplate { details, findings }.render()
         }
         DecodedData::Bip21(bip21) => Bip21Template { bip21 }.render(),
         DecodedData::Bip353(hrn) => resolve_and_build_bip353(&hrn).await?.render(),

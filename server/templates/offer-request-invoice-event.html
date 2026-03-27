@@ -48,7 +48,7 @@
 {% when OnionEvent::Result(Ok(invoice)) %}
 <h5>🧾 Invoice</h5>
 <div>
-  {{ invoice | hex }}
+  {{ self::investigate_payload_hex(invoice) }}
   <br>
   {{ self::investigate_link(invoice) }}
 </div>

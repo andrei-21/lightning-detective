@@ -5,8 +5,8 @@ use colored::{ColoredString, Colorize};
 use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    resolve_bip353, resolve_lnurl, Description, Image, InvoiceDetails, JsonRpcEvent, LiquidAddress,
-    LiquidUri, LnUrlResponse, PayOfferParams,
+    resolve_bip353, resolve_lnurl, Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails, Description,
+    Image, InvoiceDetails, JsonRpcEvent, LiquidAddress, LiquidUri, LnUrlResponse, PayOfferParams,
 };
 use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, ServiceKind};
 use std::env;
@@ -67,6 +67,18 @@ async fn main() -> Result<()> {
             }
             // let findings = invoice_detective.investigate_bolt12(offer)?;
             // print_findings(findings)
+        }
+        DecodedData::Bolt12Invoice(invoice) => {
+            let _details = Bolt12InvoiceDetails::from(&invoice);
+            // TODO: Print detais.
+            let findings = invoice_detective.investigate_bolt12_invoice(&invoice)?;
+            print_findings(findings)
+        }
+        DecodedData::Bolt12StaticInvoice(invoice) => {
+            let _details = Bolt12StaticInvoiceDetails::from(&invoice);
+            // TODO: Print detais.
+            let findings = invoice_detective.investigate_bolt12_static_invoice(&invoice)?;
+            print_findings(findings)
         }
         DecodedData::Refund(refund) => {
             println!("{refund:?}")
