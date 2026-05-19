@@ -200,6 +200,11 @@ impl RecipientDecoder {
         let lsps = vec![
             Provider::new(
                 ServiceKind::ConsumerWallet,
+                "Lexe.app",
+                vec!["0314a77523d1dcbc5db56081edcbc24ab820b35e343a6c6769176de707c178d457"],
+            ),
+            Provider::new(
+                ServiceKind::ConsumerWallet,
                 "lipa", // breez.diem.lsp
                 vec!["0264a62a4307d701c04a46994ce5f5323b1ca28c80c66b73c631dbcb0990d6e835"],
             ),
