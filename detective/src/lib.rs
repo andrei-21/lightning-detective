@@ -7,7 +7,6 @@ mod chain_hash;
 pub mod decoder;
 mod duration;
 mod features;
-mod graph_database;
 mod investigate_value;
 mod invoice_details;
 mod ldk_node;
@@ -17,13 +16,13 @@ mod node;
 pub mod offer_details;
 mod onchain_address;
 mod recipient;
+mod rgs_graph;
 mod spark;
 pub mod types;
 
 pub use crate::bip353::{resolve_bip353, Bip353Result};
 pub use crate::bolt12_invoice_details::{Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails};
 pub use crate::features::{Feature, FeatureFlag, Features};
-use crate::graph_database::GraphDatabase;
 pub use crate::investigate_value::{InvestigateValue, InvestigateValueKind};
 pub use crate::invoice_details::{
     Description, InvoiceDetails, RouteHintDetails, RouteHintHopDetails,
@@ -37,8 +36,10 @@ pub use crate::lnurl::{
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;
 pub use crate::recipient::{RecipientNode, ServiceKind};
+use crate::rgs_graph::RgsGraph;
 use crate::spark::detect_spark_address;
 use anyhow::{anyhow, Error, Result};
+use bitcoin::network::Network;
 use bitcoin::secp256k1::PublicKey;
 use lightning::blinded_path::message::BlindedMessagePath;
 use lightning::blinded_path::IntroductionNode;
@@ -60,17 +61,16 @@ pub struct InvestigativeFindings {
 }
 
 pub struct InvoiceDetective {
-    graph_database: GraphDatabase,
+    graph: RgsGraph,
     recipient_decoder: RecipientDecoder,
 }
 
 impl InvoiceDetective {
-    pub fn new() -> Result<Self> {
-        const DATABASE_PATH: &str = "./graph.db3";
-        let graph_database = GraphDatabase::open(DATABASE_PATH)?;
+    pub async fn new() -> Result<Self> {
+        let graph = RgsGraph::load_or_empty(Network::Bitcoin).await;
         let recipient_decoder = RecipientDecoder::new();
         Ok(Self {
-            graph_database,
+            graph,
             recipient_decoder,
         })
     }
@@ -89,7 +89,7 @@ impl InvoiceDetective {
             .copied()
             .unwrap_or_else(|| invoice.recover_payee_pub_key())
             .to_string();
-        let payee = self.graph_database.query(pubkey.clone())?;
+        let payee = self.graph.query(&pubkey);
         let route_hints = self.process_route_hints(&invoice.route_hints())?;
         let recipient = self.recipient_decoder.decode(&pubkey, &route_hints);
         let recipient = match recipient {
@@ -121,7 +121,7 @@ impl InvoiceDetective {
 
     pub fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
         let pubkey = resolve_bolt12_pubkey(offer.paths(), offer.issuer_signing_pubkey(), None)?;
-        let payee = self.graph_database.query(pubkey.clone())?;
+        let payee = self.graph.query(&pubkey);
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
 
         Ok(InvestigativeFindings {
@@ -141,7 +141,7 @@ impl InvoiceDetective {
             invoice.issuer_signing_pubkey(),
             Some(invoice.signing_pubkey()),
         )?;
-        let payee = self.graph_database.query(pubkey.clone())?;
+        let payee = self.graph.query(&pubkey);
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
         Ok(InvestigativeFindings {
             recipient,
@@ -160,7 +160,7 @@ impl InvoiceDetective {
             invoice.issuer_signing_pubkey(),
             Some(invoice.signing_pubkey()),
         )?;
-        let payee = self.graph_database.query(pubkey.clone())?;
+        let payee = self.graph.query(&pubkey);
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
         Ok(InvestigativeFindings {
             recipient,
@@ -175,7 +175,7 @@ impl InvoiceDetective {
         for hint in route_hints {
             let mut x = Vec::new();
             for hop in &hint.0 {
-                let node = self.graph_database.query(hop.src_node_id.to_string())?;
+                let node = self.graph.query(hop.src_node_id.to_string());
                 x.push(node);
             }
             result.push(x);

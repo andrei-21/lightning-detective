@@ -12,7 +12,7 @@ use detective::{InvestigativeFindings, InvoiceDetective, Node, RecipientNode, Se
 use std::env;
 use tokio_stream::StreamExt;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<()> {
     env_logger::Builder::from_default_env()
         .format_timestamp_millis()
@@ -20,8 +20,6 @@ async fn main() -> Result<()> {
 
     let input = env::args().nth(1).ok_or(anyhow!("Input is required"))?;
     let decoded_data = decode(&input)?;
-
-    let invoice_detective = InvoiceDetective::new()?;
 
     match decoded_data {
         DecodedData::OnchainAddress(address) => {
@@ -51,6 +49,7 @@ async fn main() -> Result<()> {
         DecodedData::Invoice(invoice) => {
             let invoice_details = InvoiceDetails::from(&invoice);
             print_invoice_details(invoice_details);
+            let invoice_detective = InvoiceDetective::new().await?;
             let findings = invoice_detective.investigate_bolt11(&invoice)?;
             print_findings(findings)
         }
@@ -71,12 +70,14 @@ async fn main() -> Result<()> {
         DecodedData::Bolt12Invoice(invoice) => {
             let _details = Bolt12InvoiceDetails::from(&invoice);
             // TODO: Print detais.
+            let invoice_detective = InvoiceDetective::new().await?;
             let findings = invoice_detective.investigate_bolt12_invoice(&invoice)?;
             print_findings(findings)
         }
         DecodedData::Bolt12StaticInvoice(invoice) => {
             let _details = Bolt12StaticInvoiceDetails::from(&invoice);
             // TODO: Print detais.
+            let invoice_detective = InvoiceDetective::new().await?;
             let findings = invoice_detective.investigate_bolt12_static_invoice(&invoice)?;
             print_findings(findings)
         }

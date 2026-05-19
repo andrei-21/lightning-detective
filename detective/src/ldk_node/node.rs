@@ -22,25 +22,21 @@ use lightning::onion_message::messenger::{
     DefaultMessageRouter, Destination, MessageSendInstructions, OnionMessenger, SendSuccess,
 };
 use lightning::onion_message::offers::OffersMessage;
-use lightning::routing::gossip::NetworkGraph;
 use lightning::sign::EntropySource;
 use lightning::sign::KeysManager;
-use lightning::util::logger::{Level, Logger, Record};
 use lightning_net_tokio::setup_outbound;
-use lightning_rapid_gossip_sync::RapidGossipSync;
-use log::{debug, RecordBuilder};
+use log::debug;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::time::{sleep, Instant};
 
 use crate::offer_details;
+use crate::rgs_graph::{LdkLogger, LdkNetworkGraph, LdkRapidGossipSync, RgsGraph, RGS_CACHE_PATH};
 
 use super::offers_handler::{Bolt12InvoiceResponse, OffersHandler};
 
 type LdkMessageRouter =
-    DefaultMessageRouter<Arc<NetworkGraph<Arc<LdkLogger>>>, Arc<LdkLogger>, Arc<KeysManager>>;
-
-type LdkRapidGossipSync = RapidGossipSync<Arc<NetworkGraph<Arc<LdkLogger>>>, Arc<LdkLogger>>;
+    DefaultMessageRouter<Arc<LdkNetworkGraph>, Arc<LdkLogger>, Arc<KeysManager>>;
 
 type LdkOnionMessenger = OnionMessenger<
     Arc<KeysManager>,
@@ -64,29 +60,6 @@ type LdkPeerManager = PeerManager<
     Arc<KeysManager>,
     Arc<IgnoringMessageHandler>,
 >;
-
-pub struct LdkLogger;
-
-impl Logger for LdkLogger {
-    fn log(&self, record: Record) {
-        let level = match record.level {
-            Level::Gossip | Level::Trace => log::Level::Trace,
-            Level::Debug => log::Level::Debug,
-            Level::Info => log::Level::Info,
-            Level::Warn => log::Level::Warn,
-            Level::Error => log::Level::Error,
-        };
-        let args = format_args!("{}", record.args);
-        let record = RecordBuilder::new()
-            .level(level)
-            .target(record.module_path)
-            .module_path_static(Some(record.module_path))
-            .line(Some(record.line))
-            .args(args)
-            .build();
-        log::logger().log(&record);
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct PayOfferParams {
@@ -139,7 +112,7 @@ pub struct LdkNode {
     pub keys_manager: Arc<KeysManager>,
     pub inbound_payment_key: ExpandedKey,
     pub offers_handler: Arc<OffersHandler>,
-    pub network_graph: Arc<NetworkGraph<Arc<LdkLogger>>>,
+    pub network_graph: Arc<LdkNetworkGraph>,
     pub rapid_gossip_sync: Arc<LdkRapidGossipSync>,
     pub onion_messenger: Arc<LdkOnionMessenger>,
     pub peer_manager: Arc<LdkPeerManager>,
@@ -162,12 +135,9 @@ impl LdkNode {
         let inbound_payment_key = ExpandedKey::new(config.inbound_payment_key);
         let offers_handler = Arc::new(OffersHandler::new(inbound_payment_key));
 
-        let network_graph = Arc::new(NetworkGraph::new(config.network, Arc::clone(&logger)));
-
-        let rapid_gossip_sync = Arc::new(RapidGossipSync::new(
-            Arc::clone(&network_graph),
-            Arc::clone(&logger),
-        ));
+        let graph = RgsGraph::new(config.network, Arc::clone(&logger));
+        let network_graph = Arc::clone(&graph.network_graph);
+        let rapid_gossip_sync = Arc::clone(&graph.rapid_gossip_sync);
 
         let message_router = Arc::new(LdkMessageRouter::new(
             Arc::clone(&network_graph),
@@ -219,7 +189,9 @@ impl LdkNode {
     }
 
     pub async fn start(&self) -> Result<()> {
-        self.update_network_graph().await.map(drop)
+        crate::rgs_graph::update_network_graph(&self.rapid_gossip_sync, Path::new(RGS_CACHE_PATH))
+            .await
+            .map(drop)
     }
 
     pub async fn request_invoice(
@@ -395,43 +367,6 @@ impl LdkNode {
             Err(_elapsed) => bail!("Failed to connect: timeout"),
         }
     }
-
-    async fn update_network_graph(&self) -> Result<u32> {
-        const RGS_URL: &str = "https://rapidsync.lightningdevkit.org/v2";
-        const RGS_CACHE_PATH: &str = "/tmp/ldk-rgs-0.bin";
-        let url = format!("{RGS_URL}/0.bin");
-        let cache_path = Path::new(RGS_CACHE_PATH);
-
-        let snapshot_bytes = if let Some(bytes) = read_cached_rgs_snapshot(cache_path) {
-            debug!("Using cached RGS snapshot at {}", cache_path.display());
-            bytes
-        } else {
-            debug!("Fetching RGS snapshot {url}");
-            let response = reqwest::get(url)
-                .await
-                .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?
-                .error_for_status()
-                .map_err(|e| anyhow!("Failed to fetch RGS snapshot: {e}"))?;
-
-            let snapshot_bytes = response
-                .bytes()
-                .await
-                .map_err(|e| anyhow!("Failed to read RGS snapshot body: {e}"))?
-                .to_vec();
-            if let Err(e) = std::fs::write(cache_path, &snapshot_bytes) {
-                debug!(
-                    "Failed to write RGS snapshot cache at {}: {e}",
-                    cache_path.display()
-                );
-            }
-            snapshot_bytes
-        };
-
-        debug!("Applying RGS snapshot");
-        self.rapid_gossip_sync
-            .update_network_graph(snapshot_bytes.as_ref())
-            .map_err(|e| anyhow!("Failed to apply RGS snapshot: {e:?}"))
-    }
 }
 
 fn to_socket_addr(addr: SocketAddress) -> Option<SocketAddr> {
@@ -443,24 +378,5 @@ fn to_socket_addr(addr: SocketAddress) -> Option<SocketAddr> {
             Some(SocketAddr::new(IpAddr::V6(Ipv6Addr::from(addr)), port))
         }
         _ => None,
-    }
-}
-
-fn read_cached_rgs_snapshot(cache_path: &Path) -> Option<Vec<u8>> {
-    let metadata = std::fs::metadata(cache_path).ok()?;
-    let modified = metadata.modified().ok()?;
-    let age = SystemTime::now().duration_since(modified).ok()?;
-    if age > Duration::from_secs(60 * 60 * 24) {
-        return None;
-    }
-    match std::fs::read(cache_path) {
-        Ok(bytes) => Some(bytes),
-        Err(e) => {
-            debug!(
-                "Failed to read RGS snapshot cache at {}: {e}",
-                cache_path.display()
-            );
-            None
-        }
     }
 }

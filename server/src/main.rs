@@ -4,7 +4,7 @@ use anyhow::{anyhow, bail, Context, Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use axum::body::Body;
-use axum::extract::{Form, Query};
+use axum::extract::{Form, Query, State};
 use axum::http::{header, Response};
 use axum::response::Html;
 use axum::routing::{get, post};
@@ -25,7 +25,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
@@ -50,6 +50,11 @@ const PAYMENT_INSTRUCTIONS: &[u8] = include_bytes!("../static/payment-instructio
 static OFFER_REQUESTS: OnceLock<Mutex<HashMap<String, OfferRequestInvoiceInput>>> = OnceLock::new();
 static LNURL_REQUESTS: OnceLock<Mutex<HashMap<String, LnurlRequestInvoiceInput>>> = OnceLock::new();
 
+#[derive(Clone)]
+struct AppState {
+    detective: Arc<detective::InvoiceDetective>,
+}
+
 fn offer_requests() -> &'static Mutex<HashMap<String, OfferRequestInvoiceInput>> {
     OFFER_REQUESTS.get_or_init(Default::default)
 }
@@ -67,6 +72,13 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
     tracing::info!("Starting...");
+    let state = AppState {
+        detective: Arc::new(
+            detective::InvoiceDetective::new()
+                .await
+                .context("Failed to construct InvoiceDetective")?,
+        ),
+    };
 
     let app = Router::new()
         .route("/", get(index))
@@ -91,7 +103,8 @@ async fn main() -> Result<()> {
         .route(
             "/static/payment-instructions.png",
             get(payment_instructions_png),
-        );
+        )
+        .with_state(state);
 
     let addr: SocketAddr = "0.0.0.0:3000".parse().context("Invalid bind address")?;
     tracing::info!("Listening on http://{addr}");
@@ -107,12 +120,12 @@ struct IndexQuery {
     r: Option<String>,
 }
 
-async fn index(Query(params): Query<IndexQuery>) -> Html<String> {
+async fn index(State(state): State<AppState>, Query(params): Query<IndexQuery>) -> Html<String> {
     let request = params.r.unwrap_or_default();
     let result = if request.is_empty() {
         Safe(String::new())
     } else {
-        Safe(match parse_impl(&request).await {
+        Safe(match parse_impl(&request, &state.detective).await {
             Ok(html) => html,
             Err(err) => render_error(err),
         })
@@ -131,14 +144,14 @@ struct Input {
     text: String,
 }
 
-async fn parse(Form(input): Form<Input>) -> Html<String> {
-    parse_impl(&input.text)
+async fn parse(State(state): State<AppState>, Form(input): Form<Input>) -> Html<String> {
+    parse_impl(&input.text, &state.detective)
         .await
         .unwrap_or_else(render_error)
         .into()
 }
 
-async fn parse_impl(input: &str) -> Result<String> {
+async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Result<String> {
     let input = input.trim();
 
     let decoded = detective::decoder::decode(input)?;
@@ -155,8 +168,6 @@ async fn parse_impl(input: &str) -> Result<String> {
             OfferTemplate { offer }.render()
         }
         DecodedData::Invoice(invoice) => {
-            let detective = detective::InvoiceDetective::new()
-                .context("Failed to construct InvoiceDetective")?;
             let findings = detective
                 .investigate_bolt11(&invoice)
                 .context("Failed to investigate invoice")?;
@@ -164,8 +175,6 @@ async fn parse_impl(input: &str) -> Result<String> {
             InvoiceTemplate { invoice, findings }.render()
         }
         DecodedData::Bolt12Invoice(invoice) => {
-            let detective = detective::InvoiceDetective::new()
-                .context("Failed to construct InvoiceDetective")?;
             let findings = detective
                 .investigate_bolt12_invoice(&invoice)
                 .context("Failed to investigate invoice")?;
@@ -173,8 +182,6 @@ async fn parse_impl(input: &str) -> Result<String> {
             Bolt12InvoiceTemplate { details, findings }.render()
         }
         DecodedData::Bolt12StaticInvoice(invoice) => {
-            let detective = detective::InvoiceDetective::new()
-                .context("Failed to construct InvoiceDetective")?;
             let findings = detective
                 .investigate_bolt12_static_invoice(&invoice)
                 .context("Failed to investigate invoice")?;
