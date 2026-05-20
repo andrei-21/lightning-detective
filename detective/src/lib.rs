@@ -1,5 +1,6 @@
 #![warn(unused_crate_dependencies)]
 
+mod alias_resolver;
 mod bip353;
 pub mod bolt12;
 mod bolt12_invoice_details;
@@ -20,6 +21,7 @@ mod rgs_graph;
 mod spark;
 pub mod types;
 
+use crate::alias_resolver::AliasResolver;
 pub use crate::bip353::{resolve_bip353, Bip353Result};
 pub use crate::bolt12_invoice_details::{Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails};
 pub use crate::features::{Feature, FeatureFlag, Features};
@@ -62,35 +64,41 @@ pub struct InvestigativeFindings {
 
 pub struct InvoiceDetective {
     graph: RgsGraph,
+    alias_resolver: AliasResolver,
     recipient_decoder: RecipientDecoder,
 }
 
 impl InvoiceDetective {
     pub async fn new() -> Result<Self> {
         let graph = RgsGraph::load_or_empty(Network::Bitcoin).await;
+        let alias_resolver = AliasResolver::new();
         let recipient_decoder = RecipientDecoder::new();
         Ok(Self {
             graph,
+            alias_resolver,
             recipient_decoder,
         })
     }
 
-    pub fn investigate(&self, invoice: &str) -> Result<InvestigativeFindings> {
+    pub async fn investigate(&self, invoice: &str) -> Result<InvestigativeFindings> {
         let invoice = invoice
             .trim()
             .parse::<Bolt11Invoice>()
             .map_err(Error::msg)?;
-        self.investigate_bolt11(&invoice)
+        self.investigate_bolt11(&invoice).await
     }
 
-    pub fn investigate_bolt11(&self, invoice: &Bolt11Invoice) -> Result<InvestigativeFindings> {
+    pub async fn investigate_bolt11(
+        &self,
+        invoice: &Bolt11Invoice,
+    ) -> Result<InvestigativeFindings> {
         let pubkey = invoice
             .payee_pub_key()
             .copied()
             .unwrap_or_else(|| invoice.recover_payee_pub_key())
             .to_string();
-        let payee = self.graph.query(&pubkey);
-        let route_hints = self.process_route_hints(&invoice.route_hints())?;
+        let payee = self.query_node(&pubkey).await;
+        let route_hints = self.process_route_hints(&invoice.route_hints()).await?;
         let recipient = self.recipient_decoder.decode(&pubkey, &route_hints);
         let recipient = match recipient {
             RecipientNode::NonCustodial { lsp, .. } if lsp.service == ServiceKind::Spark => {
@@ -119,9 +127,9 @@ impl InvoiceDetective {
         })
     }
 
-    pub fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
+    pub async fn investigate_bolt12(&self, offer: Offer) -> Result<InvestigativeFindings> {
         let pubkey = resolve_bolt12_pubkey(offer.paths(), offer.issuer_signing_pubkey(), None)?;
-        let payee = self.graph.query(&pubkey);
+        let payee = self.query_node(&pubkey).await;
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
 
         Ok(InvestigativeFindings {
@@ -132,7 +140,7 @@ impl InvoiceDetective {
         })
     }
 
-    pub fn investigate_bolt12_invoice(
+    pub async fn investigate_bolt12_invoice(
         &self,
         invoice: &Bolt12Invoice,
     ) -> Result<InvestigativeFindings> {
@@ -141,7 +149,7 @@ impl InvoiceDetective {
             invoice.issuer_signing_pubkey(),
             Some(invoice.signing_pubkey()),
         )?;
-        let payee = self.graph.query(&pubkey);
+        let payee = self.query_node(&pubkey).await;
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
         Ok(InvestigativeFindings {
             recipient,
@@ -151,7 +159,7 @@ impl InvoiceDetective {
         })
     }
 
-    pub fn investigate_bolt12_static_invoice(
+    pub async fn investigate_bolt12_static_invoice(
         &self,
         invoice: &StaticInvoice,
     ) -> Result<InvestigativeFindings> {
@@ -160,7 +168,7 @@ impl InvoiceDetective {
             invoice.issuer_signing_pubkey(),
             Some(invoice.signing_pubkey()),
         )?;
-        let payee = self.graph.query(&pubkey);
+        let payee = self.query_node(&pubkey).await;
         let recipient = self.recipient_decoder.decode(&pubkey, &Vec::new());
         Ok(InvestigativeFindings {
             recipient,
@@ -170,17 +178,25 @@ impl InvoiceDetective {
         })
     }
 
-    fn process_route_hints(&self, route_hints: &Vec<RouteHint>) -> Result<Vec<Vec<Node>>> {
+    async fn process_route_hints(&self, route_hints: &Vec<RouteHint>) -> Result<Vec<Vec<Node>>> {
         let mut result = Vec::new();
         for hint in route_hints {
             let mut x = Vec::new();
             for hop in &hint.0 {
-                let node = self.graph.query(hop.src_node_id.to_string());
+                let node = self.query_node(&hop.src_node_id.to_string()).await;
                 x.push(node);
             }
             result.push(x);
         }
         Ok(result)
+    }
+
+    async fn query_node(&self, pubkey: &str) -> Node {
+        let mut node = self.graph.query(pubkey);
+        if node.alias.is_none() {
+            node.alias = self.alias_resolver.resolve(pubkey).await;
+        }
+        node
     }
 }
 

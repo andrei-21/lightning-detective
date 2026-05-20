@@ -125,7 +125,11 @@ fn query_network_graph(network_graph: &LdkNetworkGraph, pubkey: &str) -> Node {
         return unknown();
     };
     let Some(announcement_info) = node_info.announcement_info.as_ref() else {
-        return unknown();
+        return Node {
+            pubkey: pubkey.to_string(),
+            alias: None,
+            is_announced: true,
+        };
     };
     let alias = announcement_info.alias().to_string();
     let alias = (!alias.is_empty()).then_some(alias);

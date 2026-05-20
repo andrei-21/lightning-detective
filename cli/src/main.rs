@@ -50,7 +50,7 @@ async fn main() -> Result<()> {
             let invoice_details = InvoiceDetails::from(&invoice);
             print_invoice_details(invoice_details);
             let invoice_detective = InvoiceDetective::new().await?;
-            let findings = invoice_detective.investigate_bolt11(&invoice)?;
+            let findings = invoice_detective.investigate_bolt11(&invoice).await?;
             print_findings(findings)
         }
         DecodedData::Offer(offer) => {
@@ -64,21 +64,25 @@ async fn main() -> Result<()> {
             while let Some(event) = events.next().await {
                 println!("{event:?}");
             }
-            // let findings = invoice_detective.investigate_bolt12(offer)?;
+            // let findings = invoice_detective.investigate_bolt12(offer).await?;
             // print_findings(findings)
         }
         DecodedData::Bolt12Invoice(invoice) => {
             let _details = Bolt12InvoiceDetails::from(&invoice);
             // TODO: Print detais.
             let invoice_detective = InvoiceDetective::new().await?;
-            let findings = invoice_detective.investigate_bolt12_invoice(&invoice)?;
+            let findings = invoice_detective
+                .investigate_bolt12_invoice(&invoice)
+                .await?;
             print_findings(findings)
         }
         DecodedData::Bolt12StaticInvoice(invoice) => {
             let _details = Bolt12StaticInvoiceDetails::from(&invoice);
             // TODO: Print detais.
             let invoice_detective = InvoiceDetective::new().await?;
-            let findings = invoice_detective.investigate_bolt12_static_invoice(&invoice)?;
+            let findings = invoice_detective
+                .investigate_bolt12_static_invoice(&invoice)
+                .await?;
             print_findings(findings)
         }
         DecodedData::Refund(refund) => {

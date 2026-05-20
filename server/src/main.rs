@@ -170,6 +170,7 @@ async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Res
         DecodedData::Invoice(invoice) => {
             let findings = detective
                 .investigate_bolt11(&invoice)
+                .await
                 .context("Failed to investigate invoice")?;
             let invoice = InvoiceDetails::from(&invoice);
             InvoiceTemplate { invoice, findings }.render()
@@ -177,6 +178,7 @@ async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Res
         DecodedData::Bolt12Invoice(invoice) => {
             let findings = detective
                 .investigate_bolt12_invoice(&invoice)
+                .await
                 .context("Failed to investigate invoice")?;
             let details = Bolt12InvoiceDetails::from(&invoice);
             Bolt12InvoiceTemplate { details, findings }.render()
@@ -184,6 +186,7 @@ async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Res
         DecodedData::Bolt12StaticInvoice(invoice) => {
             let findings = detective
                 .investigate_bolt12_static_invoice(&invoice)
+                .await
                 .context("Failed to investigate invoice")?;
             let details = Bolt12StaticInvoiceDetails::from(&invoice);
             Bolt12StaticInvoiceTemplate { details, findings }.render()
