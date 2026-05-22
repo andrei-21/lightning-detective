@@ -35,6 +35,10 @@
 	  <th scope="row"> BOLT-12 offer </th>
 	  <td> {{ offer | hex }} <br> {{ self::investigate_link(offer) }} </td>
 
+	  {% when Bip21Param::CashuPaymentRequest with (request) %}
+	  <th scope="row"> Cashu payment request </th>
+	  <td> {{ request | hex }} <br> {{ self::investigate_link(request) }} </td>
+
 	  {% when Bip21Param::SilentPayment with (sp) %}
 	  <th scope="row"> Silent payment address </th>
 	  <td> {{ sp | hex }} <br> {{ self::investigate_link(sp) }} </td>

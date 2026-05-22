@@ -10,6 +10,7 @@ use reqwest::Url;
 use silentpayments::SilentPaymentAddress;
 use std::str::FromStr;
 
+use crate::cashu::{is_payment_request, parse_payment_request, PaymentRequest};
 use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidUri};
 use crate::lnurl::LightningAddress;
 use crate::types::Sat;
@@ -36,6 +37,7 @@ pub enum DecodedData {
     SilentPaymentAddress(SilentPaymentAddress),
     Bolt12Invoice(Bolt12Invoice),
     Bolt12StaticInvoice(StaticInvoice),
+    CashuPaymentRequest(PaymentRequest),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -57,6 +59,8 @@ pub fn decode(input: &str) -> Result<DecodedData> {
                 DecodedData::Bolt12StaticInvoice(invoice)
             }
         }
+    } else if is_payment_request(input) {
+        DecodedData::CashuPaymentRequest(parse_payment_request(input)?)
     } else if let Some(lowercased) = lowercased.strip_prefix("lightning:") {
         decode_lightning(lowercased)?
     } else if lowercased.starts_with(LIQUID_PREFIX) || lowercased.starts_with(LIQUID_TESTNET_PREFIX)
@@ -185,6 +189,7 @@ pub enum Bip21Param {
     Message(String),
     Lightning(String),
     Offer(String),
+    CashuPaymentRequest(String),
     SilentPayment(String),
     // BIP 78: A Simple Payjoin Proposal.
     PayjoinEndpoint(String),
@@ -236,6 +241,7 @@ impl TryFrom<(&str, &str)> for Bip21Param {
             "message" => Self::Message(decode_percent(value)?),
             "lightning" => Self::Lightning(decode_percent(value)?),
             "lno" => Self::Offer(decode_percent(value)?),
+            "creq" => Self::CashuPaymentRequest(decode_percent(value)?),
             "sp" => Self::SilentPayment(decode_percent(value)?),
             "pj" => Self::PayjoinEndpoint(decode_percent(value)?),
             "pjos" if value == "0" => Self::PayjoinDisallowOutputSubstitution,
@@ -369,6 +375,57 @@ mod tests {
                         Bip21Param::Label("Donation".to_string()),
                         Bip21Param::Message("Thanks for your support".to_string())
                     ]
+                );
+            }
+            other => panic!("expected BIP-21 data, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_cashu_payment_request() {
+        let input = "CREQB1QYQQWER9D4HNZV3NQGQQSQQQQQQQQQQRAQPSQQGQQSQQZQG9QQVXSAR5WPEN5TE0D45KUAPWV4UXZMTSD3JJUCM0D5RQQRJRDANXVET9YPCXZ7TDV4H8GXHR3TQ";
+
+        match decode(input).unwrap() {
+            DecodedData::CashuPaymentRequest(request) => {
+                assert_eq!(request.id.as_deref(), Some("demo123"));
+                assert_eq!(request.amount, Some(1000));
+                assert_eq!(request.unit.as_deref(), Some("sat"));
+            }
+            other => panic!("expected Cashu payment request, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_creq_prefixed_lightning_addresses() {
+        for username in ["creqa", "creqb1"] {
+            let input = format!("{username}@getalby.com");
+
+            match decode(&input).unwrap() {
+                DecodedData::Bip353OrLightningAddress(hrn, lightning_address) => {
+                    assert_eq!(hrn.user(), username);
+                    assert_eq!(hrn.domain(), "getalby.com");
+                    assert_eq!(lightning_address.username, username);
+                    assert_eq!(lightning_address.domain, "getalby.com");
+                }
+                DecodedData::LightningAddress(lightning_address) => {
+                    assert_eq!(lightning_address.username, username);
+                    assert_eq!(lightning_address.domain, "getalby.com");
+                }
+                other => panic!("expected lightning address, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn decodes_bip21_uri_with_cashu_payment_request() {
+        let creq = "CREQB1QYQQWER9D4HNZV3NQGQQSQQQQQQQQQQRAQPSQQGQQSQQZQG9QQVXSAR5WPEN5TE0D45KUAPWV4UXZMTSD3JJUCM0D5RQQRJRDANXVET9YPCXZ7TDV4H8GXHR3TQ";
+        let uri = format!("bitcoin:?creq={creq}");
+
+        match decode(&uri).unwrap() {
+            DecodedData::Bip21(Bip21 { params, .. }) => {
+                assert_eq!(
+                    params,
+                    vec![Bip21Param::CashuPaymentRequest(creq.to_string())]
                 );
             }
             other => panic!("expected BIP-21 data, got {other:?}"),

@@ -33,11 +33,11 @@ mod templates;
 
 use crate::templates::{
     Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, Bolt12InvoiceTemplate,
-    Bolt12StaticInvoiceTemplate, DocTemplate, ErrorTemplate, IndexTemplate, InvoiceTemplate,
-    LightningAddressTemplate, LiquidAddressTemplate, LiquidUriTemplate,
-    LnurlRequestInvoiceEventTemplate, LnurlTemplate, OfferRequestInvoiceEventTemplate,
-    OfferTemplate, OnchainAddressTemplate, RequestInvoiceStreamTemplate,
-    SilentPaymentAddressTemplate,
+    Bolt12StaticInvoiceTemplate, CashuPaymentRequestTemplate, DocTemplate, ErrorTemplate,
+    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LiquidAddressTemplate,
+    LiquidUriTemplate, LnurlRequestInvoiceEventTemplate, LnurlTemplate,
+    OfferRequestInvoiceEventTemplate, OfferTemplate, OnchainAddressTemplate,
+    RequestInvoiceStreamTemplate, SilentPaymentAddressTemplate,
 };
 
 const STYLESHEET: &str = include_str!("../static/styles.css");
@@ -190,6 +190,9 @@ async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Res
                 .context("Failed to investigate invoice")?;
             let details = Bolt12StaticInvoiceDetails::from(&invoice);
             Bolt12StaticInvoiceTemplate { details, findings }.render()
+        }
+        DecodedData::CashuPaymentRequest(request) => {
+            CashuPaymentRequestTemplate { request }.render()
         }
         DecodedData::Bip21(bip21) => Bip21Template { bip21 }.render(),
         DecodedData::Bip353(hrn) => resolve_and_build_bip353(&hrn).await?.render(),

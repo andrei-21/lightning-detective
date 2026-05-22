@@ -4,6 +4,7 @@ mod alias_resolver;
 mod bip353;
 pub mod bolt12;
 mod bolt12_invoice_details;
+pub mod cashu;
 mod chain_hash;
 pub mod decoder;
 mod duration;

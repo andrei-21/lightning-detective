@@ -39,6 +39,7 @@
 
 		  
           <li><b><a href="#bip21">BIP-21 URI Scheme</a></b></li>
+          <li><b><a href="#cashu-payment-request">Cashu Payment Request</a></b></li>
           <li><b><a href="#liquid-uri">Liquid URI</a></b></li>
           <li><b><a href="#bip352">BIP-352 Silent Payments</a></b></li>
           <li><b><a href="#bip353">BIP-353 DNS Payment Instructions</a></b></li>
@@ -123,6 +124,16 @@
 			The format enables standardized payment requests across wallets and services,
 			and can also support extensions like Payjoin.
 			This URI structure simplifies payment initiation by bundling all necessary data into a single link.
+		  </p>
+		</section>
+
+		<section>
+		  <h2 id="cashu-payment-request">Cashu Payment Request</h2>
+		  <p>Defined in the {{ self::external_link("https://cashubtc.github.io/nuts/18/", "NUT-18 specification") }} and {{ self::external_link("https://cashubtc.github.io/nuts/26/", "NUT-26 specification") }}.</p>
+		  <p>
+			A Cashu payment request describes how a sender can construct and deliver ecash to a receiver.
+			It may include an amount, unit, accepted mints, a description, transport hints, and optional {{ self::external_link("https://cashubtc.github.io/nuts/10/", "NUT-10 locking conditions") }}.
+			The request can be encoded as <code>creqA</code> CBOR/base64 or as <code>creqb</code> Bech32m/TLV for smaller QR codes.
 		  </p>
 		</section>
 

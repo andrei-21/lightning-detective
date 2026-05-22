@@ -1,0 +1,111 @@
+<article>
+  {% set name = "Cashu Payment Request" %}
+  {% set doc = "cashu-payment-request" %}
+  {% include "include/result-header.html" %}
+
+  <table>
+    <tbody>
+      <tr>
+        <th scope="row">Encoding</th>
+        <td>{{ request.encoding }}</td>
+      </tr>
+      <tr>
+        <th scope="row">Payment id</th>
+        <td>
+          {% match request.id %}
+          {% when Some with (id) %}
+          {{ id | hex }}
+          {% when None %}
+          {{ self::mute("empty") }}
+          {% endmatch %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Amount</th>
+        <td>
+          {% match request.amount %}
+          {% when Some with (amount) %}
+          {{ amount }}
+          {% match request.unit %}
+          {% when Some with (unit) %}
+          {{ unit }}
+          {% when None %}
+          {% endmatch %}
+          {% when None %}
+          {{ self::mute("empty") }}
+          {% endmatch %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Single use</th>
+        <td>
+          {% match request.single_use %}
+          {% when Some with (single_use) %}
+          {{ single_use }}
+          {% when None %}
+          {{ self::mute("unspecified") }}
+          {% endmatch %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Description</th>
+        <td>
+          {% match request.description %}
+          {% when Some with (description) %}
+          {{ description }}
+          {% when None %}
+          {{ self::mute("empty") }}
+          {% endmatch %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Mints</th>
+        <td>
+          {% if request.mints.is_empty() %}
+          {{ self::mute("empty") }}
+          {% endif %}
+          {% for mint in request.mints %}
+          {{ mint | hex }}<br>
+          {% endfor %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">Transports</th>
+        <td>
+          {% if request.transports.is_empty() %}
+          {{ self::mute("in-band") }}
+          {% endif %}
+          {% for transport in request.transports %}
+          <mark class="badge-supported">{{ transport.kind }}</mark>
+          {{ transport.target | hex }}
+          {% if !transport.tags.is_empty() %}
+          <br>
+          {% for tag in transport.tags %}
+          <code>{{ tag.key }}={{ tag.values.join(", ") }}</code>
+          {% endfor %}
+          {% endif %}
+          <br>
+          {% endfor %}
+        </td>
+      </tr>
+      <tr>
+        <th scope="row">NUT-10 lock</th>
+        <td>
+          {% match request.nut10 %}
+          {% when Some with (nut10) %}
+          <mark class="badge-supported">{{ nut10.kind }}</mark>
+          {{ nut10.data | hex }}
+          {% if !nut10.tags.is_empty() %}
+          <br>
+          {% for tag in nut10.tags %}
+          <code>{{ tag.key }}={{ tag.values.join(", ") }}</code>
+          {% endfor %}
+          {% endif %}
+          {% when None %}
+          {{ self::mute("empty") }}
+          {% endmatch %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</article>

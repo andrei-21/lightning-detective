@@ -2,6 +2,7 @@
 
 use anyhow::{anyhow, Result};
 use colored::{ColoredString, Colorize};
+use detective::cashu::PaymentRequest;
 use detective::decoder::{decode, Bip21, Bip21Param, DecodedData};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
@@ -84,6 +85,9 @@ async fn main() -> Result<()> {
                 .investigate_bolt12_static_invoice(&invoice)
                 .await?;
             print_findings(findings)
+        }
+        DecodedData::CashuPaymentRequest(request) => {
+            print_cashu_payment_request(request);
         }
         DecodedData::Refund(refund) => {
             println!("{refund:?}")
@@ -301,6 +305,7 @@ fn print_bip21(bip21: Bip21) {
             Bip21Param::Message(v) => println!("         Message: {v}"),
             Bip21Param::Lightning(v) => println!(" BOLT 11 invoice: {v}"),
             Bip21Param::Offer(v) => println!("   BOLT 12 offer: {v}"),
+            Bip21Param::CashuPaymentRequest(v) => println!("    Cashu creq: {v}"),
             Bip21Param::SilentPayment(v) => println!("  Silent Payment: {v}"),
             Bip21Param::PayjoinEndpoint(v) => println!("Payjoin Endpoint: {v}"),
             Bip21Param::PayjoinDisallowOutputSubstitution => {
@@ -308,6 +313,51 @@ fn print_bip21(bip21: Bip21) {
             }
             Bip21Param::Unknown(key, value) => println!("Unknown param {key}={value}"),
         }
+    }
+}
+
+fn print_cashu_payment_request(request: PaymentRequest) {
+    println!("📋 {}", " Cashu Payment Request ".reversed());
+    println!("    Encoding: {}", request.encoding);
+    println!("          Id: {}", format_option(&request.id));
+    match (request.amount, request.unit) {
+        (Some(amount), Some(unit)) => println!("      Amount: {amount} {unit}"),
+        (Some(amount), None) => println!("      Amount: {amount}"),
+        (None, _) => println!("      Amount: {}", "empty".italic().dimmed()),
+    }
+    println!(
+        "  Single use: {}",
+        request
+            .single_use
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "unspecified".to_string())
+    );
+    println!(" Description: {}", format_option(&request.description));
+    if request.mints.is_empty() {
+        println!("       Mints: {}", "empty".italic().dimmed());
+    } else {
+        for mint in request.mints {
+            println!("       Mints: {mint}");
+        }
+    }
+    if request.transports.is_empty() {
+        println!("  Transports: {}", "in-band".italic().dimmed());
+    } else {
+        for transport in request.transports {
+            println!("  Transports: {} -> {}", transport.kind, transport.target);
+            for tag in transport.tags {
+                println!("        Tags: {}={}", tag.key, tag.values.join(", "));
+            }
+        }
+    }
+    match request.nut10 {
+        Some(nut10) => {
+            println!(" NUT-10 lock: {} {}", nut10.kind, nut10.data);
+            for tag in nut10.tags {
+                println!("        Tags: {}={}", tag.key, tag.values.join(", "));
+            }
+        }
+        None => println!(" NUT-10 lock: {}", "empty".italic().dimmed()),
     }
 }
 

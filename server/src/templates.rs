@@ -2,6 +2,7 @@ use anyhow::{Error, Result};
 use askama::filters::Safe;
 use askama::Template;
 use build_html::{Html, HtmlContainer, HtmlElement, HtmlTag};
+use detective::cashu::PaymentRequest;
 use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
@@ -76,6 +77,12 @@ pub struct Bolt12InvoiceTemplate {
 pub struct Bolt12StaticInvoiceTemplate {
     pub details: detective::Bolt12StaticInvoiceDetails,
     pub findings: InvestigativeFindings,
+}
+
+#[derive(Template)]
+#[template(path = "cashu-payment-request.html")]
+pub struct CashuPaymentRequestTemplate {
+    pub request: PaymentRequest,
 }
 
 #[derive(Template)]
