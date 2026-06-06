@@ -32,9 +32,9 @@ use tracing_subscriber::util::SubscriberInitExt;
 mod templates;
 
 use crate::templates::{
-    Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template, Bolt12InvoiceTemplate,
-    Bolt12StaticInvoiceTemplate, CashuPaymentRequestTemplate, DocTemplate, ErrorTemplate,
-    IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LiquidAddressTemplate,
+    ArkAddressTemplate, Bip21Template, Bip353OrLightningAddressTemplate, Bip353Template,
+    Bolt12InvoiceTemplate, Bolt12StaticInvoiceTemplate, CashuPaymentRequestTemplate, DocTemplate,
+    ErrorTemplate, IndexTemplate, InvoiceTemplate, LightningAddressTemplate, LiquidAddressTemplate,
     LiquidUriTemplate, LnurlRequestInvoiceEventTemplate, LnurlTemplate,
     OfferRequestInvoiceEventTemplate, OfferTemplate, OnchainAddressTemplate,
     RequestInvoiceStreamTemplate, SilentPaymentAddressTemplate,
@@ -194,6 +194,7 @@ async fn parse_impl(input: &str, detective: &detective::InvoiceDetective) -> Res
         DecodedData::CashuPaymentRequest(request) => {
             CashuPaymentRequestTemplate { request }.render()
         }
+        DecodedData::ArkAddress(address) => ArkAddressTemplate { address }.render(),
         DecodedData::Bip21(bip21) => Bip21Template { bip21 }.render(),
         DecodedData::Bip353(hrn) => resolve_and_build_bip353(&hrn).await?.render(),
         DecodedData::LnUrl(lnurl) => {

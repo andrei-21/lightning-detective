@@ -10,6 +10,7 @@ use reqwest::Url;
 use silentpayments::SilentPaymentAddress;
 use std::str::FromStr;
 
+use crate::ark::{is_ark_address, ArkAddress};
 use crate::cashu::{is_payment_request, parse_payment_request, PaymentRequest};
 use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidUri};
 use crate::lnurl::LightningAddress;
@@ -38,6 +39,7 @@ pub enum DecodedData {
     Bolt12Invoice(Bolt12Invoice),
     Bolt12StaticInvoice(StaticInvoice),
     CashuPaymentRequest(PaymentRequest),
+    ArkAddress(ArkAddress),
 }
 
 pub fn decode(input: &str) -> Result<DecodedData> {
@@ -73,6 +75,8 @@ pub fn decode(input: &str) -> Result<DecodedData> {
         DecodedData::OnchainAddress(address)
     } else if let Ok(address) = SilentPaymentAddress::try_from(input) {
         DecodedData::SilentPaymentAddress(address)
+    } else if is_ark_address(input) {
+        DecodedData::ArkAddress(ArkAddress::from_str(input).context("Failed to parse Ark address")?)
     } else if lowercased.starts_with(BITCOIN_PREFIX) {
         let bip21 = parse_bip21(input).context("Failed to parse BIP-21 URI")?;
         DecodedData::Bip21(bip21)
@@ -392,6 +396,41 @@ mod tests {
                 assert_eq!(request.unit.as_deref(), Some("sat"));
             }
             other => panic!("expected Cashu payment request, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn decodes_ark_addresses() {
+        for input in [
+            "ark1pwh9vsmezqqpharv69q4z8m6x364d5m5prnmcalcalq9pdmzw0y7mpveck4pcfhezqypczkrrj3lkx5ue4qrf4jc7ztpt9htdttmh2judhqnu7aue8p0y9mqkr4cf5",
+            "tark1pwh9vsmezqqpharv69q4z8m6x364d5m5prnmcalcalq9pdmzw0y7mpveck4pcfhezqypczkrrj3lkx5ue4qrf4jc7ztpt9htdttmh2judhqnu7aue8p0y9mq47jn9z",
+        ] {
+            match decode(input).unwrap() {
+                DecodedData::ArkAddress(address) => assert_eq!(address.to_string(), input),
+                other => panic!("expected Ark address, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn does_not_classify_arkade_addresses_as_bark_addresses() {
+        let input = "ark1qqellv77udfmr20tun8dvju5vgudpf9vxe8jwhthrkn26fz96pawqfdy8nk05rsmrf8h94j26905e7n6sng8y059z8ykn2j5xcuw4xt8ngt9rw";
+
+        let err = decode(input).unwrap_err();
+
+        assert!(!err.to_string().contains("Arkade address"));
+    }
+
+    #[test]
+    fn does_not_classify_ark_prefixed_inputs_with_invalid_characters() {
+        for input in ["ark1p@getalby.com", "tark1p$getalby.com", "ark1p getalby"] {
+            match decode(input) {
+                Ok(DecodedData::ArkAddress(address)) => {
+                    panic!("expected non-Ark result for {input}, got {address}")
+                }
+                Ok(_) => {}
+                Err(err) => assert!(!err.to_string().contains("Ark address")),
+            }
         }
     }
 

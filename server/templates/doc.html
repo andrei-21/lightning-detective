@@ -41,6 +41,7 @@
           <li><b><a href="#bip21">BIP-21 URI Scheme</a></b></li>
           <li><b><a href="#cashu-payment-request">Cashu Payment Request</a></b></li>
           <li><b><a href="#liquid-uri">Liquid URI</a></b></li>
+          <li><b><a href="#ark-address">Ark Addresses</a></b></li>
           <li><b><a href="#bip352">BIP-352 Silent Payments</a></b></li>
           <li><b><a href="#bip353">BIP-353 DNS Payment Instructions</a></b></li>
           <li><b><a href="#onchain">On-Chain Addresses</a></b></li>
@@ -151,6 +152,35 @@
 		  <p>
 			Reference discussion:
 			{{ self::external_link("https://github.com/ElementsProject/elements/issues/805", "Elements issue #805") }}.
+		  </p>
+		</section>
+
+		<section>
+		  <h2 id="ark-address">Ark Addresses</h2>
+		  <p>
+			Ark is a Bitcoin layer that represents balances as virtual transaction outputs (VTXOs)
+			coordinated by an Ark server.
+			An Ark address tells a sender which Ark server the receiver uses, which VTXO policy should be
+			created for the receiver, and how the newly created VTXO should be delivered.
+		  </p>
+		  <p>
+			Ark addresses are Bech32m-encoded strings using <code>ark</code> for mainnet and
+			<code>tark</code> for test networks.
+			Policy addresses currently use version <code>1</code>, which makes them start with
+			<code>ark1p</code> or <code>tark1p</code>.
+		  </p>
+		  <p>
+			The payload includes an Ark ID derived from the server public key, a VTXO policy, and one or
+			more delivery mechanisms.
+			The most common policy is a pubkey policy, where the receiver's public key controls the VTXO.
+			HTLC send and receive policies may also appear when Ark is used with Lightning payments.
+			Delivery commonly uses the Ark server's mailbox with a blinded mailbox identifier.
+		  </p>
+		  <p>
+			More information:
+			{{ self::external_link("https://docs.second.tech/ark-protocol/intro/", "Second's Ark protocol introduction") }}
+			and
+			{{ self::external_link("https://docs.second.tech/ark-protocol/vtxo/", "Ark VTXO documentation") }}.
 		  </p>
 		</section>
 		

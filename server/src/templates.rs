@@ -6,7 +6,7 @@ use detective::cashu::PaymentRequest;
 use detective::decoder::{Bip21, Bip21Param};
 use detective::offer_details::{IntroductionNode, OfferDetails};
 use detective::{
-    Bip353Result, Description, FeatureFlag, InvestigateValue, InvestigativeFindings,
+    ArkAddress, Bip353Result, Description, FeatureFlag, InvestigateValue, InvestigativeFindings,
     InvoiceDetails, JsonRpcEvent, LightningAddress, LiquidAddress, LiquidUri, LnUrlResponse, Node,
     OnchainAddress, OnionEvent, RecipientNode, ServiceKind, SilentPaymentAddress,
 };
@@ -83,6 +83,12 @@ pub struct Bolt12StaticInvoiceTemplate {
 #[template(path = "cashu-payment-request.html")]
 pub struct CashuPaymentRequestTemplate {
     pub request: PaymentRequest,
+}
+
+#[derive(Template)]
+#[template(path = "ark-address.html")]
+pub struct ArkAddressTemplate {
+    pub address: ArkAddress,
 }
 
 #[derive(Template)]

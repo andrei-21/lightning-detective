@@ -89,6 +89,10 @@ async fn main() -> Result<()> {
         DecodedData::CashuPaymentRequest(request) => {
             print_cashu_payment_request(request);
         }
+        DecodedData::ArkAddress(address) => {
+            println!("📋 {}", " Ark Address ".reversed());
+            println!("Address: {address}");
+        }
         DecodedData::Refund(refund) => {
             println!("{refund:?}")
         }

@@ -1,6 +1,7 @@
 #![warn(unused_crate_dependencies)]
 
 mod alias_resolver;
+mod ark;
 mod bip353;
 pub mod bolt12;
 mod bolt12_invoice_details;
@@ -23,6 +24,7 @@ mod spark;
 pub mod types;
 
 use crate::alias_resolver::AliasResolver;
+pub use crate::ark::ArkAddress;
 pub use crate::bip353::{resolve_bip353, Bip353Result};
 pub use crate::bolt12_invoice_details::{Bolt12InvoiceDetails, Bolt12StaticInvoiceDetails};
 pub use crate::features::{Feature, FeatureFlag, Features};

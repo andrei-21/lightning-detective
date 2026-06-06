@@ -1,0 +1,40 @@
+<article>
+  {% set name = "Ark Address" %}
+  {% set doc = "ark-address" %}
+  {% include "include/result-header.html" %}
+
+  <table>
+	<tbody>
+	  <tr>
+		<th scope="row"> Ark address </th>
+		<td> {{ address.address | hex }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Network </th>
+		<td> {{ address.network }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Ark ID </th>
+		<td> {{ address.ark_id | hex }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Policy </th>
+		<td> {{ address.policy }} </td>
+	  </tr>
+	  <tr>
+		<th scope="row"> Delivery </th>
+		<td>
+		  {% if address.delivery.is_empty() %}
+		  {{ self::mute("empty") }}
+		  {% else %}
+		  <ul>
+			{% for delivery in address.delivery %}
+			<li>{{ delivery }}</li>
+			{% endfor %}
+		  </ul>
+		  {% endif %}
+		</td>
+	  </tr>
+	</tbody>
+  </table>
+</article>
