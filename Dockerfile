@@ -2,6 +2,10 @@
 FROM rust:1.91-slim-bookworm as builder
 WORKDIR /workspace
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends protobuf-compiler \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY . .
 RUN cargo build --release --bin server
 

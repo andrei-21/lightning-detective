@@ -7,7 +7,7 @@ edition = "2021"
 anyhow = "1"
 base64 = "0.22"
 bech32 = "0.11"
-bark-wallet = "0.1.4"
+bark-wallet = { version =  "0.2.2", default-features = false }
 bitcoin = { version = "0.32", default-features = false, features = ["std", "rand-std"] }
 bitcoin-payment-instructions = "0.6"
 chrono = "0.4"
