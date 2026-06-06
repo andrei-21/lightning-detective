@@ -29,25 +29,25 @@ pub struct ErrorTemplate {
 }
 
 #[derive(Template)]
-#[template(path = "onchain_address.html")]
+#[template(path = "onchain-address.html")]
 pub struct OnchainAddressTemplate {
     pub address: OnchainAddress,
 }
 
 #[derive(Template)]
-#[template(path = "silent_payment_address.html")]
+#[template(path = "silent-payment-address.html")]
 pub struct SilentPaymentAddressTemplate {
     pub address: SilentPaymentAddress,
 }
 
 #[derive(Template)]
-#[template(path = "liquid_address.html")]
+#[template(path = "liquid-address.html")]
 pub struct LiquidAddressTemplate {
     pub address: LiquidAddress,
 }
 
 #[derive(Template)]
-#[template(path = "liquid_uri.html")]
+#[template(path = "liquid-uri.html")]
 pub struct LiquidUriTemplate {
     pub uri: LiquidUri,
 }

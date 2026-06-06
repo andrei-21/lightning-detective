@@ -27,7 +27,7 @@
 		</td>
 	  </tr>
 	  <tr><th scope="row"> Amount </th><td> {{ uri.amount | or_empty }} </td></tr>
-	  <tr><th scope="row"> Asset id </th><td> {{ uri.asset_id | or_empty }} </td></tr>
+	  <tr><th scope="row"> Asset id </th><td> {{ uri.asset_id | or_empty_hex }} </td></tr>
 	  <tr><th scope="row"> Label </th><td> {{ uri.label | or_empty }} </td></tr>
 	  <tr><th scope="row"> Message </th><td> {{ uri.message | or_empty }} </td></tr>
 	  <tr>
