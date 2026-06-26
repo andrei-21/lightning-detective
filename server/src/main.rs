@@ -72,15 +72,31 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
     tracing::info!("Starting...");
-    let state = AppState {
+
+    let app = app(build_state().await?);
+
+    let server_address = std::env::var("SERVER_ADDRESS").context("Invalid SERVER_ADDRESS")?;
+    let addr: SocketAddr = server_address.parse().context("Invalid bind address")?;
+    tracing::info!("Listening on http://{addr}");
+    let listener = tokio::net::TcpListener::bind(addr)
+        .await
+        .context("Failed to bind TCP listener")?;
+    axum::serve(listener, app).await.context("Server error")?;
+    Ok(())
+}
+
+async fn build_state() -> Result<AppState> {
+    Ok(AppState {
         detective: Arc::new(
             detective::InvoiceDetective::new()
                 .await
                 .context("Failed to construct InvoiceDetective")?,
         ),
-    };
+    })
+}
 
-    let app = Router::new()
+fn app(state: AppState) -> Router {
+    Router::new()
         .route("/", get(index))
         .route("/api/parse", post(parse))
         .route("/api/lnurl-request-invoice", post(request_invoice))
@@ -104,15 +120,7 @@ async fn main() -> Result<()> {
             "/static/payment-instructions.png",
             get(payment_instructions_png),
         )
-        .with_state(state);
-
-    let addr: SocketAddr = "0.0.0.0:3000".parse().context("Invalid bind address")?;
-    tracing::info!("Listening on http://{addr}");
-    let listener = tokio::net::TcpListener::bind(addr)
-        .await
-        .context("Failed to bind TCP listener")?;
-    axum::serve(listener, app).await.context("Server error")?;
-    Ok(())
+        .with_state(state)
 }
 
 #[derive(Deserialize, Default)]
@@ -486,4 +494,119 @@ fn generate_id() -> String {
         .take(24)
         .map(char::from)
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::body::to_bytes;
+    use axum::http::{Request, StatusCode};
+    use tower::ServiceExt;
+
+    const ONCHAIN_ADDRESS: &str = "bc1p5d7rjq7g6rdk2yhzks9smlaqtedr4dekq08ge8ztwac72sfr9rusxg3297";
+    const LIQUID_URI: &str = "liquidnetwork:ex1q7gkeyjut0mrxc3j0kjlt7rmcnvsh0gt45d3fud\
+        ?amount=0.001\
+        &assetid=6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d\
+        &label=Donation\
+        &message=Thanks%20Liquid";
+    const SILENT_PAYMENT_ADDRESS: &str =
+        "sp1qqweplq6ylpfrzuq6hfznzmv28djsraupudz0s0dclyt8erh70pgwxqkz2ydatksrdzf770\
+        umsntsmcjp4kcz7jqu03jeszh0gdmpjzmrf5u4zh0c";
+    const ARK_ADDRESS: &str =
+        "ark1pwh9vsmezqqpharv69q4z8m6x364d5m5prnmcalcalq9pdmzw0y7mpveck4pcfhezqyp\
+        czkrrj3lkx5ue4qrf4jc7ztpt9htdttmh2judhqnu7aue8p0y9mqkr4cf5";
+    const BOLT11_INVOICE: &str =
+        "lnbc1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5\
+        qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmm\
+        wwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq9qrsgq357wnc5r2ueh7ck\
+        6q93dj32dlqnls087fxdwk8qakdyafkq3yap9us6v52vjjsrvywa6rt52cm9r9zqt8r2\
+        t7mlcwspyetp5h2tztugp9lfyql";
+
+    async fn parse_html(input: &str) -> String {
+        let app = app(build_state().await.unwrap());
+        let body = format!("text={}", urlencoding::encode(input));
+        let response = app
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/parse")
+                    .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                    .body(Body::from(body))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[tokio::test]
+    async fn renders_onchain_address_html() {
+        let html = parse_html(ONCHAIN_ADDRESS).await;
+
+        assert!(html.contains("On-Chain Address"));
+        assert!(html.contains("p2tr"));
+        assert!(html.contains("Bitcoin"));
+        assert!(html.contains(ONCHAIN_ADDRESS));
+        assert!(html.contains("Show&nbsp;QR") || html.contains("Show QR"));
+    }
+
+    #[tokio::test]
+    async fn renders_liquid_uri_html() {
+        let html = parse_html(LIQUID_URI).await;
+
+        assert!(html.contains("Liquid URI"));
+        assert!(html.contains("100,000 sats"));
+        assert!(html.contains("Donation"));
+        assert!(html.contains("Thanks Liquid"));
+        assert!(html.contains("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"));
+    }
+
+    #[tokio::test]
+    async fn renders_silent_payment_address_html() {
+        let html = parse_html(SILENT_PAYMENT_ADDRESS).await;
+
+        assert!(html.contains("Silent Payment Address"));
+        assert!(html.contains("Mainnet"));
+        assert!(html.contains("Scan public key"));
+        assert!(html.contains("Spend public key"));
+    }
+
+    #[tokio::test]
+    async fn renders_ark_address_html() {
+        let html = parse_html(ARK_ADDRESS).await;
+
+        assert!(html.contains("Ark Address"));
+        assert!(html.contains("mainnet"));
+        assert!(html.contains("Ark ID"));
+        assert!(html.contains("Policy"));
+        assert!(html.contains("Delivery"));
+    }
+
+    #[tokio::test]
+    async fn renders_bolt11_invoice_html() {
+        let html = parse_html(BOLT11_INVOICE).await;
+
+        assert!(html.contains("BOLT-11 Invoice"));
+        assert!(html.contains("Investigative Findings"));
+        assert!(html.contains("Details"));
+        assert!(html.contains("Bitcoin"));
+        assert!(html.contains("Please consider supporting this project"));
+        assert!(html.contains("0001020304050607080900010203040506070809000102030405060708090102"));
+        assert!(html.contains("03e7156ae33b0a208d0744199163177e909e80176e55d97a2f221ede0f934dd9ad"));
+        assert!(html.contains("Payment secret"));
+        assert!(html.contains("Minimum final CLTV expiry"));
+        assert!(html.contains("Features"));
+    }
+
+    #[tokio::test]
+    async fn renders_error_html_for_invalid_input() {
+        let html = parse_html("not a payment instruction").await;
+
+        assert!(html.contains("class=\"error\""));
+        assert!(html.contains("Error"));
+        assert!(html.contains("file an issue on GitHub"));
+    }
 }
