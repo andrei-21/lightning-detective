@@ -58,6 +58,9 @@
 			<ul>
 			  <li><a href="#lud16">Lightning Address</a></li>
 			</ul>
+			<ul>
+			  <li><a href="#nip57">NIP-57 Zaps</a></li>
+			</ul>
 		  </li>
 		  
 		</ul>
@@ -255,6 +258,12 @@
 		  <p>
 			Lightning Addresses let users share an email-like identifier (e.g., <code>name@domain</code>)
 			that resolves to an LNURL-pay endpoint, so wallets can fetch metadata and request invoices.
+		  </p>
+		  <h3 id="nip57">NIP-57 Zaps</h3>
+		  <p>
+			Defined in the {{ self::nip(57) }}. Zaps extend LNURL Pay with
+			Nostr metadata, allowing a sender to request an invoice for a
+			signed kind <code>9734</code> zap request.
 		  </p>
 		</section>
 

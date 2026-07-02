@@ -46,6 +46,34 @@
   </tbody>
 </table>
 
+<div class="subsection">
+  <h6>⚡ NIP-57 Zap Support {{ self::doc("nip57") }}</h6>
+  <table>
+	<tbody>
+	  <tr>
+		<th scope="row"> Status </th>
+		<td>
+		  {% if pay.zap.allowed %}
+			{% if pay.zap.nostr_pubkey_valid %}
+			<mark class="badge-supported">supported</mark>
+			{% else %}
+			<mark class="badge-not-supported">invalid configuration</mark>
+			{% endif %}
+		  {% else %}
+			<mark class="badge-not-supported">not supported</mark>
+		  {% endif %}
+		</td>
+	  </tr>
+	  {% if pay.zap.allowed %}
+	  <tr>
+		<th scope="row"> Zap receipt signer </th>
+		<td>{{ pay.zap.nostr_pubkey | or_empty_hex }}</td>
+	  </tr>
+	  {% endif %}
+	</tbody>
+  </table>
+</div>
+
 <details>
   <summary role="button" class="outline"> ⬆️ Request BOLT-11 Invoice </summary>
   <form

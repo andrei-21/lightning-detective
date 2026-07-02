@@ -167,6 +167,17 @@ fn print_lnurl_details(details: LnUrlResponse) {
             let comment = pay.comment_allowed.map(|c| format!("Up to {c} chars"));
             println!("    Comment: {}", format_option(&comment));
             println!("   Callback: {}", pay.callback);
+            if pay.zap.allowed {
+                let status = if pay.zap.nostr_pubkey_valid {
+                    "supported"
+                } else {
+                    "invalid configuration"
+                };
+                println!("Zap support: {status}");
+                println!(" Zap signer: {}", format_option(&pay.zap.nostr_pubkey));
+            } else {
+                println!("Zap support: not supported");
+            }
             for (key, value) in pay.metadata {
                 println!("   Metadata: {key}: {value}");
             }

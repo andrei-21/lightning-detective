@@ -36,7 +36,7 @@ pub use crate::ldk_node::{request_bolt12_invoice, OnionEvent, PayOfferParams};
 pub use crate::liquid_address::{parse_liquid_uri, LiquidAddress, LiquidNetwork, LiquidUri};
 pub use crate::lnurl::{
     request_invoice, resolve_lnurl, Image, JsonRpcEvent, LightningAddress, LnUrlResponse,
-    PayResponse,
+    PayResponse, ZapSupport,
 };
 pub use crate::node::Node;
 use crate::recipient::RecipientDecoder;

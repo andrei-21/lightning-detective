@@ -1,5 +1,6 @@
 use anyhow::{anyhow, bail, ensure, Context, Error, Result};
 use base64::{engine::general_purpose, Engine as _};
+use bitcoin::secp256k1::XOnlyPublicKey;
 use lnurl::decode_ln_url_response_from_json;
 use reqwest::{Method, StatusCode};
 use serde::Deserialize;
@@ -79,7 +80,61 @@ pub struct PayResponse {
     pub image: Option<Image>,
     pub comment_allowed: Option<u32>,
     pub callback: String,
+    pub zap: ZapSupport,
     pub metadata: Vec<(String, String)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZapSupport {
+    pub allowed: bool,
+    pub nostr_pubkey: Option<String>,
+    pub nostr_pubkey_valid: bool,
+}
+
+impl ZapSupport {
+    fn unavailable() -> Self {
+        Self {
+            allowed: false,
+            nostr_pubkey: None,
+            nostr_pubkey_valid: false,
+        }
+    }
+
+    pub fn is_usable(&self) -> bool {
+        self.allowed && self.nostr_pubkey_valid
+    }
+
+    fn from_raw(allows_nostr: Option<bool>, nostr_pubkey: Option<String>) -> Self {
+        let allowed = allows_nostr.unwrap_or(false);
+        let nostr_pubkey_valid = nostr_pubkey
+            .as_deref()
+            .map(is_valid_nostr_pubkey)
+            .unwrap_or(false);
+
+        if !allowed {
+            return Self::unavailable();
+        }
+
+        Self {
+            allowed,
+            nostr_pubkey,
+            nostr_pubkey_valid,
+        }
+    }
+
+    fn from_typed(allows_nostr: Option<bool>, nostr_pubkey: Option<XOnlyPublicKey>) -> Self {
+        let allowed = allows_nostr.unwrap_or(false);
+        if !allowed {
+            return Self::unavailable();
+        }
+        let nostr_pubkey_valid = nostr_pubkey.is_some();
+
+        Self {
+            allowed,
+            nostr_pubkey: nostr_pubkey.map(|pubkey| pubkey.to_string()),
+            nostr_pubkey_valid,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -101,8 +156,28 @@ impl TryFrom<lnurl::pay::PayResponse> for PayResponse {
     type Error = Error;
 
     fn try_from(pay: lnurl::pay::PayResponse) -> Result<Self> {
+        Self::try_from_parts(
+            pay.min_sendable,
+            pay.max_sendable,
+            pay.metadata,
+            pay.comment_allowed,
+            pay.callback,
+            ZapSupport::from_typed(pay.allows_nostr, pay.nostr_pubkey),
+        )
+    }
+}
+
+impl PayResponse {
+    fn try_from_parts(
+        min_sendable: u64,
+        max_sendable: u64,
+        metadata_raw: String,
+        comment_allowed: Option<u32>,
+        callback: String,
+        zap: ZapSupport,
+    ) -> Result<Self> {
         let parsed: Value =
-            serde_json::from_str(&pay.metadata).context("LNURL metadata is not valid JSON")?;
+            serde_json::from_str(&metadata_raw).context("LNURL metadata is not valid JSON")?;
         let entries = parsed
             .as_array()
             .ok_or(anyhow!("LNURL metadata is not a JSON array"))?;
@@ -174,10 +249,11 @@ impl TryFrom<lnurl::pay::PayResponse> for PayResponse {
         Ok(Self {
             description,
             long_description,
-            sendable_amount: MsatRange::Between(Msat(pay.min_sendable), Msat(pay.max_sendable)),
+            sendable_amount: MsatRange::Between(Msat(min_sendable), Msat(max_sendable)),
             image,
-            comment_allowed: pay.comment_allowed,
-            callback: pay.callback,
+            comment_allowed,
+            callback,
+            zap,
             metadata,
         })
     }
@@ -306,15 +382,19 @@ async fn resolve_lnurl_impl(
     events: mpsc::Sender<JsonRpcEvent<LnUrlResponse>>,
 ) -> Result<LnUrlResponse> {
     let method = Method::GET;
+    let request_url = lnurl.url.clone();
     events
-        .send(JsonRpcEvent::Requesting(method.clone(), lnurl.url.clone()))
+        .send(JsonRpcEvent::Requesting(
+            method.clone(),
+            request_url.clone(),
+        ))
         .await?;
 
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(20))
         .build()?;
 
-    let response = client.request(method, lnurl.url).send().await?;
+    let response = client.request(method, request_url.clone()).send().await?;
     let status = response.status();
     events.send(JsonRpcEvent::ResponseReceived(status)).await?;
 
@@ -327,16 +407,32 @@ async fn resolve_lnurl_impl(
     let json: Value = serde_json::from_str(&body)?;
     events.send(JsonRpcEvent::JsonParsed(json.clone())).await?;
 
-    let response = decode_ln_url_response_from_json(json).map_err(Error::from)?;
+    let actual = response_kind_from_json(&json)?;
 
     if let Some(expected) = expected_response_kind(&lnurl.kind) {
-        let actual = response_kind(&response);
         ensure!(
             actual == expected,
             "LNURL kind mismatch: expected {expected:?}, got {actual:?}"
         );
     }
-    response.try_into()
+
+    if actual == LnUrlKind::Pay {
+        return Ok(LnUrlResponse::Pay(
+            LenientPayResponse::try_from(json)?.try_into()?,
+        ));
+    }
+
+    match decode_ln_url_response_from_json(json).map_err(Error::from)? {
+        lnurl::LnUrlResponse::LnUrlPayResponse(_) => {
+            unreachable!("pay responses are handled above")
+        }
+        lnurl::LnUrlResponse::LnUrlWithdrawResponse(response) => {
+            Ok(LnUrlResponse::Withdraw(response.try_into()?))
+        }
+        lnurl::LnUrlResponse::LnUrlChannelResponse(response) => {
+            Ok(LnUrlResponse::Channel(response.try_into()?))
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -344,12 +440,17 @@ struct RequestInvoiceResponse {
     pr: String,
 }
 
-fn response_kind(response: &lnurl::LnUrlResponse) -> LnUrlKind {
-    match response {
-        lnurl::LnUrlResponse::LnUrlPayResponse(_) => LnUrlKind::Pay,
-        lnurl::LnUrlResponse::LnUrlWithdrawResponse(_) => LnUrlKind::Withdraw,
-        lnurl::LnUrlResponse::LnUrlChannelResponse(_) => LnUrlKind::Channel,
-    }
+fn response_kind_from_json(json: &Value) -> Result<LnUrlKind> {
+    let tag = json
+        .get("tag")
+        .and_then(Value::as_str)
+        .ok_or(anyhow!("LNURL response is missing tag"))?;
+    Ok(match tag {
+        "payRequest" => LnUrlKind::Pay,
+        "withdrawRequest" => LnUrlKind::Withdraw,
+        "channelRequest" => LnUrlKind::Channel,
+        tag => bail!("Unknown LNURL response tag `{tag}`"),
+    })
 }
 
 fn expected_response_kind(kind: &LnUrlKind) -> Option<LnUrlKind> {
@@ -379,4 +480,134 @@ fn is_domain(s: &str) -> bool {
         && !s.starts_with('.')
         && !s.ends_with('.')
         && s.split('.').all(|l| !l.is_empty() && l.len() <= 63)
+}
+
+fn is_valid_nostr_pubkey(value: &str) -> bool {
+    value.parse::<XOnlyPublicKey>().is_ok()
+}
+
+#[derive(Deserialize)]
+struct LenientPayResponse {
+    callback: String,
+    #[serde(rename = "maxSendable")]
+    max_sendable: u64,
+    #[serde(rename = "minSendable")]
+    min_sendable: u64,
+    metadata: String,
+    #[serde(rename = "commentAllowed")]
+    comment_allowed: Option<u32>,
+    #[serde(rename = "allowsNostr")]
+    allows_nostr: Option<bool>,
+    #[serde(rename = "nostrPubkey")]
+    nostr_pubkey: Option<String>,
+}
+
+impl TryFrom<Value> for LenientPayResponse {
+    type Error = Error;
+
+    fn try_from(value: Value) -> Result<Self> {
+        serde_json::from_value(value).context("LNURL pay response is malformed")
+    }
+}
+
+impl TryFrom<LenientPayResponse> for PayResponse {
+    type Error = Error;
+
+    fn try_from(pay: LenientPayResponse) -> Result<Self> {
+        Self::try_from_parts(
+            pay.min_sendable,
+            pay.max_sendable,
+            pay.metadata,
+            pay.comment_allowed,
+            pay.callback,
+            ZapSupport::from_raw(pay.allows_nostr, pay.nostr_pubkey),
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const VALID_NOSTR_PUBKEY: &str =
+        "9630f464cca6a5147aa8a35f0bcdd3ce485324e732fd39e09233b1d848238f31";
+
+    #[test]
+    fn parses_missing_zap_support_as_unavailable() {
+        let zap = ZapSupport::from_raw(None, None);
+
+        assert!(!zap.allowed);
+        assert!(!zap.is_usable());
+        assert!(zap.nostr_pubkey.is_none());
+    }
+
+    #[test]
+    fn parses_valid_zap_support() {
+        let zap = ZapSupport::from_raw(Some(true), Some(VALID_NOSTR_PUBKEY.to_string()));
+
+        assert!(zap.allowed);
+        assert!(zap.is_usable());
+        assert_eq!(zap.nostr_pubkey.as_deref(), Some(VALID_NOSTR_PUBKEY));
+    }
+
+    #[test]
+    fn marks_invalid_zap_pubkey_as_not_usable() {
+        let zap = ZapSupport::from_raw(Some(true), Some("not-a-pubkey".to_string()));
+
+        assert!(zap.allowed);
+        assert!(!zap.is_usable());
+        assert_eq!(zap.nostr_pubkey.as_deref(), Some("not-a-pubkey"));
+    }
+
+    #[test]
+    fn preserves_typed_zap_support() {
+        let pubkey = VALID_NOSTR_PUBKEY.parse::<XOnlyPublicKey>().unwrap();
+
+        let zap = ZapSupport::from_typed(Some(true), Some(pubkey));
+
+        assert!(zap.allowed);
+        assert!(zap.is_usable());
+        assert_eq!(zap.nostr_pubkey.as_deref(), Some(VALID_NOSTR_PUBKEY));
+    }
+
+    #[test]
+    fn try_from_typed_pay_response_preserves_zap_support() {
+        let pubkey = VALID_NOSTR_PUBKEY.parse::<XOnlyPublicKey>().unwrap();
+        let pay = lnurl::pay::PayResponse {
+            callback: "https://example.com/callback".to_string(),
+            max_sendable: 1_000_000,
+            min_sendable: 1_000,
+            tag: lnurl::Tag::PayRequest,
+            metadata: "[[\"text/plain\",\"Zap demo\"]]".to_string(),
+            comment_allowed: None,
+            allows_nostr: Some(true),
+            nostr_pubkey: Some(pubkey),
+        };
+
+        let pay = PayResponse::try_from(pay).unwrap();
+
+        assert!(pay.zap.allowed);
+        assert!(pay.zap.is_usable());
+        assert_eq!(pay.zap.nostr_pubkey.as_deref(), Some(VALID_NOSTR_PUBKEY));
+    }
+
+    #[test]
+    fn converts_lenient_pay_response_with_invalid_zap_pubkey() {
+        let json = serde_json::json!({
+            "tag": "payRequest",
+            "callback": "https://example.com/callback",
+            "minSendable": 1000,
+            "maxSendable": 1000000,
+            "metadata": "[[\"text/plain\",\"Zap demo\"]]",
+            "allowsNostr": true,
+            "nostrPubkey": "not-a-pubkey"
+        });
+
+        let pay = PayResponse::try_from(LenientPayResponse::try_from(json).unwrap()).unwrap();
+
+        assert_eq!(pay.description, "Zap demo");
+        assert!(pay.zap.allowed);
+        assert!(!pay.zap.is_usable());
+        assert_eq!(pay.zap.nostr_pubkey.as_deref(), Some("not-a-pubkey"));
+    }
 }

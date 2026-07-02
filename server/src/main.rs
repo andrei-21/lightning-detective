@@ -63,6 +63,8 @@ fn lnurl_requests() -> &'static Mutex<HashMap<String, LnurlRequestInvoiceInput>>
     LNURL_REQUESTS.get_or_init(Default::default)
 }
 
+const DEFAULT_SERVER_ADDRESS: &str = "0.0.0.0:3000";
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::registry()
@@ -75,7 +77,8 @@ async fn main() -> Result<()> {
 
     let app = app(build_state().await?);
 
-    let server_address = std::env::var("SERVER_ADDRESS").context("Invalid SERVER_ADDRESS")?;
+    let server_address =
+        std::env::var("SERVER_ADDRESS").unwrap_or(DEFAULT_SERVER_ADDRESS.to_string());
     let addr: SocketAddr = server_address.parse().context("Invalid bind address")?;
     tracing::info!("Listening on http://{addr}");
     let listener = tokio::net::TcpListener::bind(addr)
@@ -601,6 +604,35 @@ mod tests {
         assert!(html.contains("Features"));
     }
 
+    #[test]
+    fn renders_lnurl_zap_support_html() {
+        let html = render_lnurl_pay_with_zap(detective::ZapSupport {
+            allowed: true,
+            nostr_pubkey: Some(
+                "9630f464cca6a5147aa8a35f0bcdd3ce485324e732fd39e09233b1d848238f31".to_string(),
+            ),
+            nostr_pubkey_valid: true,
+        });
+
+        assert!(html.contains("NIP-57 Zap Support"));
+        assert!(html.contains("supported"));
+        assert!(html.contains("Zap receipt signer"));
+        assert!(!html.contains("Request NIP-57 Zap Invoice"));
+        assert!(!html.contains("/api/lnurl-request-zap-invoice"));
+    }
+
+    #[test]
+    fn renders_invalid_lnurl_zap_config_without_form() {
+        let html = render_lnurl_pay_with_zap(detective::ZapSupport {
+            allowed: true,
+            nostr_pubkey: Some("not-a-pubkey".to_string()),
+            nostr_pubkey_valid: false,
+        });
+
+        assert!(html.contains("invalid configuration"));
+        assert!(!html.contains("Request NIP-57 Zap Invoice"));
+    }
+
     #[tokio::test]
     async fn renders_error_html_for_invalid_input() {
         let html = parse_html("not a payment instruction").await;
@@ -608,5 +640,23 @@ mod tests {
         assert!(html.contains("class=\"error\""));
         assert!(html.contains("Error"));
         assert!(html.contains("file an issue on GitHub"));
+    }
+
+    fn render_lnurl_pay_with_zap(zap: detective::ZapSupport) -> String {
+        let pay = detective::PayResponse {
+            sendable_amount: detective::types::MsatRange::Between(Msat(1_000), Msat(1_000_000)),
+            description: "Zap demo".to_string(),
+            long_description: None,
+            image: None,
+            comment_allowed: Some(100),
+            callback: "https://example.com/callback".to_string(),
+            zap,
+            metadata: Vec::new(),
+        };
+        LnurlTemplate {
+            events: vec![JsonRpcEvent::Result(Ok(LnUrlResponse::Pay(pay)))],
+        }
+        .render()
+        .unwrap()
     }
 }

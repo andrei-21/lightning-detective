@@ -236,6 +236,12 @@ pub fn lud(id: u32) -> Safe<String> {
     external_link(&link, &title)
 }
 
+pub fn nip(id: u32) -> Safe<String> {
+    let link = format!("https://github.com/nostr-protocol/nips/blob/master/{id:02}.md");
+    let title = format!("NIP-{id:02} specification");
+    external_link(&link, &title)
+}
+
 pub mod filters {
     use super::mute;
     use askama::filters::{MaybeSafe, Safe};
