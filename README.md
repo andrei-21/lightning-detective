@@ -8,6 +8,20 @@ By looking at the details of the provided BOLT-11 lightning invoice and
 leveraging some knowledge of the lightning network graph.
 Lightning Detective identifies whether the payee is a user of a non-custodial wallet, custodial exchange, or something else.
 
+## 🐳 Running with Docker
+
+Build and start the service with Docker Compose:
+
+```sh
+docker compose up --build -d
+```
+
+The service is available at <http://127.0.0.1:3000>. The Compose configuration
+intentionally publishes port 3000 only on the host's loopback interface. For
+remote access, prefer a TLS-enabled reverse proxy that forwards to this address.
+To expose the service directly, change the host address in `compose.yaml` from
+`127.0.0.1` to `0.0.0.0` and protect the port with an appropriate firewall.
+
 ## 🔧 How It Works
 A lightning invoice is a set of payment instructions which has the destination
 as a public key of the recipient node.
