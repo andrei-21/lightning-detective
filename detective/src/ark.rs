@@ -1,8 +1,8 @@
 use std::fmt;
 use std::str::FromStr;
 
-use bark::ark::address::{Address as BarkAddress, VtxoDelivery as BarkVtxoDelivery};
-use bark::ark::VtxoPolicy as BarkVtxoPolicy;
+use ark::address::{Address as ProtocolAddress, VtxoDelivery as ProtocolVtxoDelivery};
+use ark::VtxoPolicy as ProtocolVtxoPolicy;
 use bitcoin::hex::DisplayHex;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -138,10 +138,10 @@ impl fmt::Display for VtxoDelivery {
 }
 
 impl FromStr for ArkAddress {
-    type Err = bark::ark::address::ParseAddressError;
+    type Err = ark::address::ParseAddressError;
 
     fn from_str(input: &str) -> Result<Self, Self::Err> {
-        let address = BarkAddress::from_str(input)?;
+        let address = ProtocolAddress::from_str(input)?;
         Ok(Self::from(address))
     }
 }
@@ -152,8 +152,8 @@ impl fmt::Display for ArkAddress {
     }
 }
 
-impl From<BarkAddress> for ArkAddress {
-    fn from(address: BarkAddress) -> Self {
+impl From<ProtocolAddress> for ArkAddress {
+    fn from(address: ProtocolAddress) -> Self {
         let network = match address.is_testnet() {
             true => ArkNetwork::Testnet,
             false => ArkNetwork::Mainnet,
@@ -172,18 +172,29 @@ impl From<BarkAddress> for ArkAddress {
     }
 }
 
-impl From<&BarkVtxoPolicy> for VtxoPolicy {
-    fn from(policy: &BarkVtxoPolicy) -> Self {
+impl From<&ProtocolVtxoPolicy> for VtxoPolicy {
+    fn from(policy: &ProtocolVtxoPolicy) -> Self {
         match policy {
-            BarkVtxoPolicy::Pubkey(policy) => Self::Pubkey {
+            ProtocolVtxoPolicy::Pubkey(policy) => Self::Pubkey {
                 user_pubkey: policy.user_pubkey.to_string(),
             },
-            BarkVtxoPolicy::ServerHtlcSend(policy) => Self::ServerHtlcSend {
+            ProtocolVtxoPolicy::ServerHtlcSend(policy) => Self::ServerHtlcSend {
                 user_pubkey: policy.user_pubkey.to_string(),
                 payment_hash: policy.payment_hash.to_string(),
                 htlc_expiry: policy.htlc_expiry,
             },
-            BarkVtxoPolicy::ServerHtlcRecv(policy) => Self::ServerHtlcRecv {
+            ProtocolVtxoPolicy::ServerHtlcSend_v0(policy) => Self::ServerHtlcSend {
+                user_pubkey: policy.user_pubkey.to_string(),
+                payment_hash: policy.payment_hash.to_string(),
+                htlc_expiry: policy.htlc_expiry,
+            },
+            ProtocolVtxoPolicy::ServerHtlcRecv(policy) => Self::ServerHtlcRecv {
+                user_pubkey: policy.user_pubkey.to_string(),
+                payment_hash: policy.payment_hash.to_string(),
+                htlc_expiry: policy.htlc_expiry,
+                htlc_expiry_delta: policy.htlc_expiry_delta,
+            },
+            ProtocolVtxoPolicy::ServerHtlcRecv_v0(policy) => Self::ServerHtlcRecv {
                 user_pubkey: policy.user_pubkey.to_string(),
                 payment_hash: policy.payment_hash.to_string(),
                 htlc_expiry: policy.htlc_expiry,
@@ -193,13 +204,13 @@ impl From<&BarkVtxoPolicy> for VtxoPolicy {
     }
 }
 
-impl From<&BarkVtxoDelivery> for VtxoDelivery {
-    fn from(delivery: &BarkVtxoDelivery) -> Self {
+impl From<&ProtocolVtxoDelivery> for VtxoDelivery {
+    fn from(delivery: &ProtocolVtxoDelivery) -> Self {
         match delivery {
-            BarkVtxoDelivery::ServerMailbox { blinded_id } => Self::ServerMailbox {
+            ProtocolVtxoDelivery::ServerMailbox { blinded_id } => Self::ServerMailbox {
                 blinded_id: blinded_id.to_string(),
             },
-            BarkVtxoDelivery::Unknown {
+            ProtocolVtxoDelivery::Unknown {
                 delivery_type,
                 data,
             } => Self::Unknown {

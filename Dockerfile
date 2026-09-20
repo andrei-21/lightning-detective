@@ -1,12 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # ---- Build Stage ----
-FROM rust:1.91-slim-bookworm@sha256:8514999d4786ef12efe89239e86b3d0a021b94b9d35108c8efe6c79ca7dc1a65 AS builder
+FROM rust:1.98-slim-bookworm@sha256:ff521445a372125ed4f76e1453a1f8098f2d05332d1601d30db1c1f62757e730 AS builder
 WORKDIR /workspace
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends protobuf-compiler \
-    && rm -rf /var/lib/apt/lists/*
 
 COPY Cargo.toml Cargo.lock ./
 COPY cli ./cli
