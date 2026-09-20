@@ -1,7 +1,26 @@
-version: "3"
 services:
   server:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
+
+    user: "10001:10001"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=128m,mode=1777
+
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+
     ports:
-    - 3000:3000
+      - "${HOST_BIND_ADDRESS:-127.0.0.1}:3000:3000"
+
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"

@@ -1,4 +1,11 @@
-.git
-Dockerfile
-compose.yaml
-target
+*
+
+!Cargo.toml
+!Cargo.lock
+
+!cli/
+!cli/**
+!detective/
+!detective/**
+!server/
+!server/**
