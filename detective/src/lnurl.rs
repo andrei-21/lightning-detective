@@ -1,6 +1,7 @@
 use anyhow::{anyhow, bail, ensure, Context, Error, Result};
 use base64::{engine::general_purpose, Engine as _};
 use bitcoin::secp256k1::XOnlyPublicKey;
+use lightning_invoice::Bolt11Invoice;
 use lnurl::decode_ln_url_response_from_json;
 use reqwest::{Method, StatusCode};
 use serde::Deserialize;
@@ -341,7 +342,7 @@ pub fn request_invoice(
     let url = format!("{callback}{delimiter}amount={}{comment}", amount.0);
     let (tx, rx) = mpsc::channel(100);
     tokio::spawn(async move {
-        let result = request_invoice_impl(url, tx.clone()).await;
+        let result = request_invoice_impl(url, amount, tx.clone()).await;
         let _ = tx.send(JsonRpcEvent::Result(result)).await;
     });
     ReceiverStream::new(rx)
@@ -349,6 +350,7 @@ pub fn request_invoice(
 
 async fn request_invoice_impl(
     url: String,
+    requested_amount: Msat,
     events: mpsc::Sender<JsonRpcEvent<String>>,
 ) -> Result<String> {
     let method = Method::GET;
@@ -374,7 +376,23 @@ async fn request_invoice_impl(
     events.send(JsonRpcEvent::JsonParsed(json.clone())).await?;
     let invoice_response: RequestInvoiceResponse =
         serde_json::from_value(json).context("LNURL invoice response is malformed")?;
+    verify_invoice_amount(&invoice_response.pr, requested_amount)?;
     Ok(invoice_response.pr)
+}
+
+fn verify_invoice_amount(invoice: &str, requested_amount: Msat) -> Result<()> {
+    let invoice = invoice
+        .parse::<Bolt11Invoice>()
+        .context("LNURL callback returned an invalid BOLT11 invoice")?;
+
+    match invoice.amount_milli_satoshis() {
+        Some(invoice_amount) if invoice_amount == requested_amount.0 => Ok(()),
+        Some(invoice_amount) => bail!(
+            "LNURL invoice amount mismatch: requested {} msat, invoice contains {invoice_amount} msat",
+            requested_amount.0
+        ),
+        None => bail!("LNURL callback returned an amountless BOLT11 invoice"),
+    }
 }
 
 async fn resolve_lnurl_impl(
@@ -531,6 +549,51 @@ mod tests {
 
     const VALID_NOSTR_PUBKEY: &str =
         "9630f464cca6a5147aa8a35f0bcdd3ce485324e732fd39e09233b1d848238f31";
+    const INVOICE_250_000_000_MSAT: &str =
+        "lnbc2500u1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpquwpc4curk03c9wlrswe78q4eyqc7d8d0xqzpu9qrsgqhtjpauu9ur7fw2thcl4y9vfvh4m9wlfyz2gem29g5ghe2aak2pm3ps8fdhtceqsaagty2vph7utlgj48u0ged6a337aewvraedendscp573dxr";
+    const AMOUNTLESS_INVOICE: &str =
+        "lnbc1pvjluezsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygspp5qqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqqqsyqcyq5rqwzqfqypqdpl2pkx2ctnv5sxxmmwwd5kgetjypeh2ursdae8g6twvus8g6rfwvs8qun0dfjkxaq9qrsgq357wnc5r2ueh7ck6q93dj32dlqnls087fxdwk8qakdyafkq3yap9us6v52vjjsrvywa6rt52cm9r9zqt8r2t7mlcwspyetp5h2tztugp9lfyql";
+    const INVOICE_967_878_534_MSAT: &str =
+        "lnbc9678785340p1pwmna7lpp5gc3xfm08u9qy06djf8dfflhugl6p7lgza6dsjxq454gxhj9t7a0sd8dgfkx7cmtwd68yetpd5s9xar0wfjn5gpc8qhrsdfq24f5ggrxdaezqsnvda3kkum5wfjkzmfqf3jkgem9wgsyuctwdus9xgrcyqcjcgpzgfskx6eqf9hzqnteypzxz7fzypfhg6trddjhygrcyqezcgpzfysywmm5ypxxjemgw3hxjmn8yptk7untd9hxwg3q2d6xjcmtv4ezq7pqxgsxzmnyyqcjqmt0wfjjq6t5v4khxsp5zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zyg3zygsxqyjw5qcqp2rzjq0gxwkzc8w6323m55m4jyxcjwmy7stt9hwkwe2qxmy8zpsgg7jcuwz87fcqqeuqqqyqqqqlgqqqqn3qq9q9qrsgqrvgkpnmps664wgkp43l22qsgdw4ve24aca4nymnxddlnp8vh9v2sdxlu5ywdxefsfvm0fq3sesf08uf6q9a2ke0hc9j6z6wlxg5z5kqpu2v9wz";
+
+    #[test]
+    fn accepts_invoice_with_requested_amount() {
+        verify_invoice_amount(INVOICE_250_000_000_MSAT, Msat(250_000_000)).unwrap();
+    }
+
+    #[test]
+    fn rejects_invoice_below_requested_amount() {
+        let error =
+            verify_invoice_amount(INVOICE_250_000_000_MSAT, Msat(2_000_000_000)).unwrap_err();
+
+        assert!(error.to_string().contains("amount mismatch"));
+    }
+
+    #[test]
+    fn rejects_invoice_above_requested_amount() {
+        let error = verify_invoice_amount(INVOICE_250_000_000_MSAT, Msat(1_000)).unwrap_err();
+
+        assert!(error.to_string().contains("amount mismatch"));
+    }
+
+    #[test]
+    fn rejects_amountless_invoice() {
+        let error = verify_invoice_amount(AMOUNTLESS_INVOICE, Msat(1_000)).unwrap_err();
+
+        assert!(error.to_string().contains("amountless"));
+    }
+
+    #[test]
+    fn rejects_malformed_invoice() {
+        let error = verify_invoice_amount("not-an-invoice", Msat(1_000)).unwrap_err();
+
+        assert!(error.to_string().contains("invalid BOLT11 invoice"));
+    }
+
+    #[test]
+    fn accepts_invoice_with_sub_satoshi_amount() {
+        verify_invoice_amount(INVOICE_967_878_534_MSAT, Msat(967_878_534)).unwrap();
+    }
 
     #[test]
     fn parses_missing_zap_support_as_unavailable() {

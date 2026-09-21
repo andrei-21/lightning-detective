@@ -18,7 +18,7 @@ lightning = { version = "0.2", default-features = false, features = ["std"] }
 lightning-invoice = { version = "0.34", features = ["std"] }
 lightning-net-tokio = "0.2"
 lightning-rapid-gossip-sync = "0.2"
-lnurl-rs = { git = "https://github.com/benthecarman/lnurl-rs.git", rev = "745aea8", default-features = false }
+lnurl-rs = { version = "0.10", default-features = false }
 log = "0.4"
 percent-encoding-rfc3986 = "0.1"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
