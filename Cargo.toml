@@ -1,9 +1,24 @@
 [workspace]
-
 members = [
     "cli",
     "detective",
-	"server",
+    "server",
 ]
-
 resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+repository = "https://github.com/andrei-21/lightning-detective"
+readme = "README.md"
+
+[workspace.dependencies]
+anyhow = "1"
+bitcoin = { version = "0.32", default-features = false }
+detective = { path = "detective" }
+serde = "1"
+serde_json = "1"
+tokio = "1.48"
+tokio-stream = "0.1"
+urlencoding = { version = "2.1.3", default-features = false }

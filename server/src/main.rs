@@ -47,6 +47,7 @@ const HTMX_SCRIPT: &str = include_str!("../static/vendor/htmx.min.js");
 const HTMX_SSE_SCRIPT: &str = include_str!("../static/vendor/htmx-sse.js");
 const QRCODE_SCRIPT: &str = include_str!("../static/vendor/qrcode.min.js");
 const PAYMENT_INSTRUCTIONS: &[u8] = include_bytes!("../static/payment-instructions.png");
+const VERSION: &str = env!("CARGO_PKG_VERSION");
 static OFFER_REQUESTS: OnceLock<Mutex<HashMap<String, OfferRequestInvoiceInput>>> = OnceLock::new();
 static LNURL_REQUESTS: OnceLock<Mutex<HashMap<String, LnurlRequestInvoiceInput>>> = OnceLock::new();
 
@@ -142,12 +143,16 @@ async fn index(State(state): State<AppState>, Query(params): Query<IndexQuery>) 
         })
     };
 
-    let template = IndexTemplate { request, result };
+    let template = IndexTemplate {
+        request,
+        result,
+        version: VERSION,
+    };
     Html(render_template(&template))
 }
 
 async fn doc() -> Html<String> {
-    Html(DocTemplate.render().unwrap())
+    Html(render_template(&DocTemplate { version: VERSION }))
 }
 
 #[derive(Deserialize)]
@@ -543,6 +548,23 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
         String::from_utf8(bytes.to_vec()).unwrap()
+    }
+
+    #[test]
+    fn renders_titles_and_version_on_full_pages() {
+        let index_html = IndexTemplate {
+            request: String::new(),
+            result: Safe(String::new()),
+            version: VERSION,
+        }
+        .render()
+        .unwrap();
+        let doc_html = DocTemplate { version: VERSION }.render().unwrap();
+
+        assert!(index_html.contains("<title>Lightning Detective</title>"));
+        assert!(doc_html.contains("<title>Documentation · Lightning Detective</title>"));
+        assert!(index_html.contains(&format!("Lightning Detective v{VERSION}")));
+        assert!(doc_html.contains(&format!("Lightning Detective v{VERSION}")));
     }
 
     #[tokio::test]

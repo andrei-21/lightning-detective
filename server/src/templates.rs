@@ -16,11 +16,14 @@ use detective::{
 pub struct IndexTemplate {
     pub request: String,
     pub result: Safe<String>,
+    pub version: &'static str,
 }
 
 #[derive(Template)]
 #[template(path = "doc.html")]
-pub struct DocTemplate;
+pub struct DocTemplate {
+    pub version: &'static str,
+}
 
 #[derive(Template)]
 #[template(path = "error.html")]
