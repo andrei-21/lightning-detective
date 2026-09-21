@@ -42,6 +42,7 @@ use crate::templates::{
 
 const STYLESHEET: &str = include_str!("../static/styles.css");
 const APP_SCRIPT: &str = include_str!("../static/app.js");
+const FAVICON: &[u8] = include_bytes!("../static/favicon.png");
 const PICO_CSS: &str = include_str!("../static/vendor/pico.min.css");
 const HTMX_SCRIPT: &str = include_str!("../static/vendor/htmx.min.js");
 const HTMX_SSE_SCRIPT: &str = include_str!("../static/vendor/htmx-sse.js");
@@ -114,6 +115,7 @@ fn app(state: AppState) -> Router {
             get(offer_request_invoice_stream),
         )
         .route("/doc", get(doc))
+        .route("/favicon.png", get(favicon))
         .route("/static/styles.css", get(stylesheet))
         .route("/static/app.js", get(app_script))
         .route("/static/vendor/pico.min.css", get(pico_css))
@@ -442,6 +444,13 @@ async fn stylesheet() -> Response<Body> {
         .expect("Failed to render stylesheet")
 }
 
+async fn favicon() -> Response<Body> {
+    Response::builder()
+        .header(header::CONTENT_TYPE, "image/png")
+        .body(Body::from(FAVICON))
+        .expect("Failed to render favicon")
+}
+
 async fn app_script() -> Response<Body> {
     Response::builder()
         .header(
@@ -565,6 +574,32 @@ mod tests {
         assert!(doc_html.contains("<title>Documentation · Lightning Detective</title>"));
         assert!(index_html.contains(&format!("Lightning Detective v{VERSION}")));
         assert!(doc_html.contains(&format!("Lightning Detective v{VERSION}")));
+        assert!(index_html.contains(&format!("/static/styles.css?v={VERSION}")));
+        assert!(doc_html.contains(&format!("/static/styles.css?v={VERSION}")));
+        assert!(index_html.contains(&format!("/static/app.js?v={VERSION}")));
+        assert!(index_html.contains(&format!("/favicon.png?v={VERSION}")));
+        assert!(doc_html.contains(&format!("/favicon.png?v={VERSION}")));
+    }
+
+    #[tokio::test]
+    async fn serves_favicon_from_the_application() {
+        let response = app(build_state().await.unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/favicon.png")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::OK);
+        assert_eq!(
+            response.headers().get(header::CONTENT_TYPE).unwrap(),
+            "image/png"
+        );
+        let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+        assert!(bytes.starts_with(b"\x89PNG\r\n\x1a\n"));
     }
 
     #[tokio::test]

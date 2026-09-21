@@ -12,8 +12,9 @@
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="Lightning Detective" />
     <meta name="twitter:description" content="Investigate Bitcoin payment instructions such as BOLT-11 invoices, BOLT-12 offers, BIP-21 URIs, and BIP-353 DNS instructions." />
+    <link rel="icon" href="/favicon.png?v={{ version }}" type="image/png">
     <link rel="stylesheet" href="/static/vendor/pico.min.css">
-    <link rel="stylesheet" href="/static/styles.css">
+    <link rel="stylesheet" href="/static/styles.css?v={{ version }}">
 	<script src="/static/vendor/htmx.min.js" defer></script>
 	<script src="/static/vendor/htmx-sse.js" defer></script>
 	<script src="/static/vendor/qrcode.min.js" defer></script>
@@ -442,6 +443,6 @@
 
     {% include "include/footer.html" %}
 
-	<script src="/static/app.js"></script>
+	<script src="/static/app.js?v={{ version }}"></script>
   </body>
 </html>
